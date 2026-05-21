@@ -16,6 +16,8 @@
 package com.chrisjenx.silo.server
 
 import com.chrisjenx.silo.metadata.sqlite.SqliteMetadataIndex
+import com.chrisjenx.silo.metrics.PrometheusFactory
+import com.chrisjenx.silo.metrics.bindSilo
 import com.chrisjenx.silo.server.auth.AuthSettings
 import com.chrisjenx.silo.server.auth.PasswordVerifier
 import com.chrisjenx.silo.server.auth.UserStore
@@ -27,6 +29,7 @@ import com.chrisjenx.silo.storage.fs.StorageRootLock
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
+import io.ktor.server.metrics.micrometer.MicrometerMetrics
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.defaultheaders.DefaultHeaders
 import io.ktor.server.plugins.statuspages.StatusPages
@@ -74,6 +77,8 @@ fun Application.module() {
         )
     val readinessProbe = ReadinessProbe(config.storageRoot, metadataIndex)
     val reconciliationEngine = ReconciliationEngine(root = config.storageRoot, index = metadataIndex)
+    val meterRegistry = PrometheusFactory.create(env = "production", instance = "silo")
+    meterRegistry.bindSilo(cacheStore = cacheStore, reconciliationEngine = reconciliationEngine)
     val users = config.usersConfPath?.let { UserStore.loadFromFile(it) } ?: UserStore(emptyList())
     val auth =
         AuthSettings(
@@ -90,6 +95,7 @@ fun Application.module() {
             storageRootLock = lock,
             auth = auth,
             reconciliationEngine = reconciliationEngine,
+            meterRegistry = meterRegistry,
         ),
     )
 }
@@ -101,6 +107,9 @@ fun Application.module() {
  */
 fun Application.installSiloModule(services: SiloServices) {
     installSiloAuth(services.auth)
+    install(MicrometerMetrics) {
+        registry = services.meterRegistry
+    }
     install(DefaultHeaders) {
         header("Server", "silo/${SiloVersion.version}")
     }
@@ -127,6 +136,16 @@ fun Application.installSiloModule(services: SiloServices) {
             } else {
                 call.respondText("not-ready", status = HttpStatusCode.ServiceUnavailable)
             }
+        }
+        get("/metrics") {
+            call.respondText(
+                services.meterRegistry.scrape(),
+                contentType =
+                    io.ktor.http.ContentType.parse(
+                        com.chrisjenx.silo.protocol.ContentTypes.PROMETHEUS_TEXT,
+                    ),
+                status = HttpStatusCode.OK,
+            )
         }
         cacheRoutes(services.cacheStore, services.auth, services.config.maxEntryBytes)
         adminRoutes(services.reconciliationEngine)

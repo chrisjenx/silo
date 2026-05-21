@@ -107,6 +107,7 @@ private fun buildServices(root: Path): SiloServices {
         readinessProbe = ReadinessProbe(root, metadataIndex),
         storageRootLock = null,
         reconciliationEngine = com.chrisjenx.silo.storage.fs.ReconciliationEngine(root = root, index = metadataIndex),
+        meterRegistry = com.chrisjenx.silo.metrics.PrometheusFactory.create("test", "test"),
         auth =
             com.chrisjenx.silo.server.auth.AuthSettings(
                 anonymousRead = true,

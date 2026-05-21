@@ -100,5 +100,6 @@ private fun buildServices(root: Path): SiloServices {
                 verifier = PasswordVerifier(),
             ),
         reconciliationEngine = ReconciliationEngine(root = root, index = metadataIndex),
+        meterRegistry = com.chrisjenx.silo.metrics.PrometheusFactory.create("test", "test"),
     )
 }
