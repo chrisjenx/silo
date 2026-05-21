@@ -24,6 +24,7 @@ include(
     ":protocol",
     ":storage",
     ":storage-fs",
+    ":metadata-sqlite",
     ":server",
     ":test-fixtures",
 )
@@ -31,5 +32,6 @@ include(
 project(":protocol").projectDir = file("modules/protocol")
 project(":storage").projectDir = file("modules/storage")
 project(":storage-fs").projectDir = file("modules/storage-fs")
+project(":metadata-sqlite").projectDir = file("modules/metadata-sqlite")
 project(":server").projectDir = file("modules/server")
 project(":test-fixtures").projectDir = file("modules/test-fixtures")
