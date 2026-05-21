@@ -1,0 +1,21 @@
+# Example users file. Mount at /etc/silo/users.conf.
+# Generate hashes with: java -jar silo.jar hash-password
+#
+# Roles:
+#   read    — allowed to GET/HEAD
+#   write   — allowed to PUT (typically CI)
+#
+# Use bcrypt hashes only. Never commit real hashes to a public repo.
+
+users = [
+  {
+    username      = "ci-writer"
+    password-hash = "$2a$12$REPLACE_WITH_REAL_HASH"
+    roles         = ["read", "write"]
+  }
+  {
+    username      = "dev-reader"
+    password-hash = "$2a$12$REPLACE_WITH_REAL_HASH"
+    roles         = ["read"]
+  }
+]

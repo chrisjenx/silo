@@ -1,0 +1,50 @@
+name: Performance regression
+description: A measurable slowdown vs. a previous version.
+labels: ["type/perf-regression", "area/perf"]
+body:
+  - type: input
+    id: baseline
+    attributes:
+      label: Baseline version
+      placeholder: "v0.1.4"
+    validations:
+      required: true
+  - type: input
+    id: regressed
+    attributes:
+      label: Regressed version
+      placeholder: "v0.1.5 or commit SHA"
+    validations:
+      required: true
+  - type: dropdown
+    id: workload
+    attributes:
+      label: Workload
+      options:
+        - cold-put
+        - hot-get
+        - mixed (70/30)
+        - large-artifact (500MB+)
+        - other (describe below)
+    validations:
+      required: true
+  - type: textarea
+    id: numbers
+    attributes:
+      label: Measured numbers
+      description: Throughput, p50/p95/p99 latency, RSS. Paste k6 summary or JMH output.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Hardware, JVM, storage type, host topology.
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Hypothesis
+      description: Where do you think the regression lives?

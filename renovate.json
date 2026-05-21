@@ -1,0 +1,52 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(chore)",
+    "schedule:weekly"
+  ],
+  "timezone": "Europe/London",
+  "labels": ["type/chore", "area/build"],
+  "rangeStrategy": "bump",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 5am on Monday"]
+  },
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchCurrentVersion": "!/^0/",
+      "groupName": "minor + patch updates",
+      "automerge": false
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["type/chore", "area/build", "priority/p1"]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions",
+      "pinDigests": true
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "groupName": "docker images",
+      "pinDigests": true
+    },
+    {
+      "matchPackagePatterns": ["^io.ktor:"],
+      "groupName": "ktor",
+      "labels": ["type/chore", "area/build", "priority/p1"]
+    },
+    {
+      "matchPackagePatterns": ["^org.jetbrains.kotlin"],
+      "groupName": "kotlin"
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["type/security", "priority/p0"]
+  }
+}

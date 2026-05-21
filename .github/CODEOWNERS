@@ -1,0 +1,11 @@
+# Default owners — replace with team handle once one exists.
+*                       @chrisjenx
+
+# Storage internals + atomic write protocol — high blast radius
+/modules/storage/**     @chrisjenx
+/modules/storage-fs/**  @chrisjenx
+/modules/metadata-sqlite/** @chrisjenx
+
+# Release pipeline / signing / SBOM
+/.github/workflows/release.yml  @chrisjenx
+/Dockerfile                     @chrisjenx

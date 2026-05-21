@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question / discussion
+    url: https://github.com/chrisjenx/silo/discussions
+    about: For open-ended questions, ideas, or "how do I…" use Discussions.
+  - name: Security report
+    url: https://github.com/chrisjenx/silo/security/advisories/new
+    about: Please report vulnerabilities privately, not as a public issue.

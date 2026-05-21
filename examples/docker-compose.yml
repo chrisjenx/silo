@@ -1,0 +1,47 @@
+name: silo
+
+services:
+  silo:
+    image: ghcr.io/chrisjenx/silo:latest
+    container_name: silo
+    restart: unless-stopped
+    expose: ["8080"]
+    volumes:
+      - silo-data:/data
+      - ./users.conf:/etc/silo/users.conf:ro
+    environment:
+      SILO_STORAGE_ROOT: /data
+      SILO_PORT: "8080"
+      SILO_MAX_BYTES: "107374182400"      # 100 GB
+      SILO_MAX_AGE_DAYS: "30"
+      SILO_USERS_FILE: /etc/silo/users.conf
+      SILO_ANONYMOUS_READ: "true"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 3s
+      start_period: 15s
+      retries: 3
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: silo-caddy
+    restart: unless-stopped
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - silo
+
+volumes:
+  silo-data:
+  caddy-data:
+  caddy-config:

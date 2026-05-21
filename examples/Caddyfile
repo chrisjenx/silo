@@ -1,0 +1,35 @@
+{
+    # Email used for Let's Encrypt registration.
+    email admin@example.com
+}
+
+silo.example.com {
+    encode zstd gzip
+
+    # Allow large PUTs (Gradle artifacts can be hundreds of MB).
+    request_body {
+        max_size 5GB
+    }
+
+    # Stream straight to upstream; don't spool to disk.
+    reverse_proxy silo:8080 {
+        flush_interval -1
+        transport http {
+            keepalive 30s
+            keepalive_idle_conns 32
+        }
+    }
+
+    # Sensible security headers.
+    header {
+        Strict-Transport-Security "max-age=63072000"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer"
+        -Server
+    }
+
+    log {
+        output stdout
+        format json
+    }
+}

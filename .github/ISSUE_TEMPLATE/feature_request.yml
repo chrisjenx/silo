@@ -1,0 +1,33 @@
+name: Feature request
+description: A new capability or behavior change.
+labels: ["type/feature"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What pain are you hitting that motivates this feature? Be concrete.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What should Silo do?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you weighed and why they were worse.
+  - type: dropdown
+    id: willing
+    attributes:
+      label: Would you be willing to send a PR?
+      options:
+        - "Yes — I want to implement this"
+        - "Yes, with guidance"
+        - "No, just suggesting"
+    validations:
+      required: true

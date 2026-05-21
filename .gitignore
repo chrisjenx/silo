@@ -1,0 +1,72 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/build/
+out/
+
+# Kotlin
+*.kotlin_module
+*.kotlin_metadata
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+*.iws
+*.ipr
+.kotlin/
+
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Docker / build artifacts
+*.tar
+*.tar.gz
+*-all.jar
+
+# Kobweb
+.kobweb/
+site/.kobweb/
+
+# Local secrets / runtime state
+*.local
+.env
+.env.*
+!.env.example
+silo.db
+silo.db-wal
+silo.db-shm
+.silo.lock
+data/
+cas/
+
+# Benchmark output
+bench/results/
+bench/baselines/*.local.json
+k6-results-*.json
+
+# Coverage
+coverage/
+*.exec
+jacoco.xml
+kover/
+
+# Node (for markdown tooling only)
+node_modules/
+package-lock.json
