@@ -125,6 +125,7 @@ fun Application.installSiloModule(services: SiloServices) {
                 .error("unhandled error on ${call.request.path()}", cause)
             call.respond(HttpStatusCode.InternalServerError)
         }
+        status(HttpStatusCode.NotFound) { call, _ -> respondAdminNotFound(call) }
     }
 
     routing {
@@ -163,3 +164,23 @@ fun Application.installSiloModule(services: SiloServices) {
 
 /** Convenience used by [Path]-typed helpers in this module. */
 internal fun pathOf(value: String): Path = java.nio.file.Paths.get(value)
+
+private suspend fun respondAdminNotFound(call: io.ktor.server.application.ApplicationCall) {
+    if (!call.request.path().startsWith("/admin")) {
+        call.respond(HttpStatusCode.NotFound)
+        return
+    }
+    val body =
+        {}.javaClass.classLoader
+            .getResourceAsStream("static/admin/404.html")
+            ?.bufferedReader()?.use { it.readText() }
+    if (body != null) {
+        call.respondText(
+            body,
+            contentType = io.ktor.http.ContentType.Text.Html,
+            status = HttpStatusCode.NotFound,
+        )
+    } else {
+        call.respond(HttpStatusCode.NotFound)
+    }
+}
