@@ -62,12 +62,22 @@ class FileSystemCacheStore(
     private val maxEntryBytes: Long = DEFAULT_MAX_ENTRY_BYTES,
     private val fsyncDirOnRename: Boolean = true,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val mover: AtomicMover = DefaultAtomicMover,
 ) : CacheStore {
     private val log = LoggerFactory.getLogger(FileSystemCacheStore::class.java)
     private val hits = AtomicLong(0)
     private val misses = AtomicLong(0)
     private val puts = AtomicLong(0)
     private val evictions = AtomicLong(0)
+    private val crossFsRenames = AtomicLong(0)
+
+    /**
+     * Number of times the atomic-rename path fell back to copy+delete because
+     * the source and target turned out to be on different filesystems.
+     * Surfaced as `silo_storage_cross_fs_rename_total` once the metrics
+     * module lands (#12).
+     */
+    val crossFsRenameCount: Long get() = crossFsRenames.get()
 
     init {
         Files.createDirectories(root.resolve("cas"))
@@ -127,16 +137,15 @@ class FileSystemCacheStore(
             }
 
             try {
-                Files.move(
-                    tmp,
-                    final,
-                    StandardCopyOption.ATOMIC_MOVE,
-                    StandardCopyOption.REPLACE_EXISTING,
-                )
+                mover.move(tmp, final)
             } catch (_: AtomicMoveNotSupportedException) {
+                crossFsRenames.incrementAndGet()
                 log.warn(
-                    "atomic move not supported for {} -> falling back to copy+delete",
+                    "atomic move not supported for {} (source FS={} target FS={}); " +
+                        "falling back to copy+delete",
                     key.short,
+                    fsTypeOfStore(tmp),
+                    fsTypeOfStore(final.parent),
                 )
                 Files.copy(tmp, final, StandardCopyOption.REPLACE_EXISTING)
                 Files.deleteIfExists(tmp)
@@ -183,6 +192,14 @@ class FileSystemCacheStore(
                 puts = puts.get(),
                 evictions = evictions.get(),
             )
+        }
+
+    private fun fsTypeOfStore(path: Path): String =
+        try {
+            Files.getFileStore(path).type() ?: "unknown"
+        } catch (e: IOException) {
+            log.debug("could not read fs type for {}: {}", path, e.message)
+            "unknown"
         }
 
     private fun fsyncDirectory(dir: Path) {
