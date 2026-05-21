@@ -52,6 +52,8 @@ class SqliteMetadataIndex private constructor(
     private val log = LoggerFactory.getLogger(SqliteMetadataIndex::class.java)
     private val touchQueue = ConcurrentHashMap<String, Long>()
     private val writeLock = Mutex()
+
+    @Volatile
     private var closed = false
 
     override suspend fun upsert(
@@ -122,8 +124,10 @@ class SqliteMetadataIndex private constructor(
         }
 
     override fun close() {
-        if (closed) return
-        closed = true
+        synchronized(this) {
+            if (closed) return
+            closed = true
+        }
         try {
             // close() is not suspend; do a synchronous best-effort flush
             // rather than spinning a coroutine. The writeLock is non-suspend
@@ -218,9 +222,10 @@ class SqliteMetadataIndex private constructor(
 
         private const val SQL_DELETE = "DELETE FROM cache_entry WHERE key = ?"
 
-        private const val SQL_AGGREGATE = """
-            SELECT COUNT(*), COALESCE(SUM(size_bytes), 0) FROM cache_entry WHERE status = 1
-        """
+        private val SQL_AGGREGATE =
+            """
+            SELECT COUNT(*), COALESCE(SUM(size_bytes), 0) FROM cache_entry WHERE status = ${EntryStatus.COMMITTED.code}
+            """.trimIndent()
 
         private const val SQL_TOUCH = "UPDATE cache_entry SET last_access_ms = ? WHERE key = ?"
 
