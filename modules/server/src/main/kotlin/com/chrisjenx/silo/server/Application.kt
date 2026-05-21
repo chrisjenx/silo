@@ -29,6 +29,7 @@ import com.chrisjenx.silo.storage.fs.StorageRootLock
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
+import io.ktor.server.http.content.staticResources
 import io.ktor.server.metrics.micrometer.MicrometerMetrics
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.defaultheaders.DefaultHeaders
@@ -147,6 +148,7 @@ fun Application.installSiloModule(services: SiloServices) {
                 status = HttpStatusCode.OK,
             )
         }
+        staticResources(remotePath = "/admin", basePackage = "static/admin", index = "index.html")
         cacheRoutes(services.cacheStore, services.auth, services.config.maxEntryBytes)
         adminRoutes(
             reconciliationEngine = services.reconciliationEngine,
