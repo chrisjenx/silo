@@ -66,6 +66,16 @@ interface MetadataIndex : AutoCloseable {
      */
     suspend fun lruVictims(limit: Int): List<EntryRecord>
 
+    /**
+     * Returns up to [limit] committed entries whose `last_access_ms` is
+     * strictly less than [olderThanMs]. Used by the TTL sweeper to drop
+     * untouched entries.
+     */
+    suspend fun expiredVictims(
+        olderThanMs: Long,
+        limit: Int,
+    ): List<EntryRecord>
+
     /** Explicitly flush any buffered access-time updates. */
     suspend fun flush()
 

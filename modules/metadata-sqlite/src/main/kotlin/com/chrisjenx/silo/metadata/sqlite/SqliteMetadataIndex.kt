@@ -118,6 +118,23 @@ class SqliteMetadataIndex private constructor(
             }
         }
 
+    override suspend fun expiredVictims(
+        olderThanMs: Long,
+        limit: Int,
+    ): List<EntryRecord> =
+        withContext(ioDispatcher) {
+            connection.prepareStatement(SQL_EXPIRED).use { ps ->
+                ps.setInt(1, EntryStatus.COMMITTED.code)
+                ps.setLong(2, olderThanMs)
+                ps.setInt(3, limit)
+                ps.executeQuery().use { rs ->
+                    val out = mutableListOf<EntryRecord>()
+                    while (rs.next()) out += rs.toRecord()
+                    out
+                }
+            }
+        }
+
     override suspend fun aggregate(): MetadataAggregate =
         withContext(ioDispatcher) {
             connection.prepareStatement(SQL_AGGREGATE).use { ps ->
@@ -247,6 +264,15 @@ class SqliteMetadataIndex private constructor(
             SELECT key, size_bytes, inserted_at_ms, last_access_ms, content_sha256, status
             FROM cache_entry
             WHERE status = ?
+            ORDER BY last_access_ms ASC
+            LIMIT ?
+            """.trimIndent()
+
+        private val SQL_EXPIRED =
+            """
+            SELECT key, size_bytes, inserted_at_ms, last_access_ms, content_sha256, status
+            FROM cache_entry
+            WHERE status = ? AND last_access_ms < ?
             ORDER BY last_access_ms ASC
             LIMIT ?
             """.trimIndent()
