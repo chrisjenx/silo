@@ -6,4 +6,7 @@ plugins {
 dependencies {
     implementation(project(":protocol"))
     implementation(project(":storage"))
+
+    "unitTestImplementation"(project(":test-fixtures"))
+    "integrationTestImplementation"(project(":test-fixtures"))
 }

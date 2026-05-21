@@ -6,4 +6,7 @@ plugins {
 dependencies {
     api(project(":protocol"))
     implementation(libs.kotlinx.coroutines.core)
+
+    "unitTestImplementation"(project(":test-fixtures"))
+    "integrationTestImplementation"(project(":test-fixtures"))
 }
