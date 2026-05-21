@@ -29,6 +29,8 @@ data class SiloConfig(
     val storageRoot: Path,
     val maxEntryBytes: Long,
     val allowUnsupportedFs: Boolean,
+    val anonymousRead: Boolean = true,
+    val usersConfPath: Path? = null,
 ) {
     companion object {
         /** Reads `silo.*` keys from [config], falling back to documented defaults. */
@@ -50,6 +52,17 @@ data class SiloConfig(
                         "silo.storage.allow-unsupported-fs",
                         false,
                     ),
+                anonymousRead =
+                    config.optBoolean(
+                        "silo.auth.anonymous-read",
+                        true,
+                    ),
+                usersConfPath =
+                    if (config.hasPath("silo.auth.users-file")) {
+                        Paths.get(config.getString("silo.auth.users-file"))
+                    } else {
+                        null
+                    },
             )
 
         private fun Config.optInt(

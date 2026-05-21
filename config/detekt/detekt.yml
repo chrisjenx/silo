@@ -30,6 +30,9 @@ style:
     active: false
   MayBeConst:
     active: false
+  ReturnCount:
+    active: true
+    max: 4
   ForbiddenMethodCall:
     active: true
     methods:
