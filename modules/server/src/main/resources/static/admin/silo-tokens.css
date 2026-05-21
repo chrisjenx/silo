@@ -1,0 +1,50 @@
+/*
+ * Silo design tokens — phosphor / amber / paper themes.
+ * Mirrors docs/design.md §"Visual language — themes". Every fg/bg
+ * pair lands at WCAG AAA contrast (>= 7:1) on a plain rectangle.
+ *
+ * Theme is chosen with `data-theme="amber"` etc. on <html>; the
+ * picker in silo-tokens.js persists the choice in localStorage.
+ */
+:root,
+[data-theme="phosphor"] {
+    --silo-bg: #0a0e0a;
+    --silo-fg: #5dff5d;
+    --silo-dim: #2f8f2f;
+    --silo-accent: #a8ffa8;
+    --silo-warn: #ffcc33;
+    --silo-error: #ff5d5d;
+    --silo-border: #2f8f2f;
+}
+
+[data-theme="amber"] {
+    --silo-bg: #0e0a06;
+    --silo-fg: #ffc94a;
+    --silo-dim: #8a6a16;
+    --silo-accent: #ffe09b;
+    --silo-warn: #ffaa00;
+    --silo-error: #ff5d5d;
+    --silo-border: #8a6a16;
+}
+
+[data-theme="paper"] {
+    --silo-bg: #f5f1e8;
+    --silo-fg: #1a1a1a;
+    --silo-dim: #5a5a5a;
+    --silo-accent: #003366;
+    --silo-warn: #7a4a00;
+    --silo-error: #8a0000;
+    --silo-border: #1a1a1a;
+}
+
+html, body {
+    background: var(--silo-bg);
+    color: var(--silo-fg);
+}
+.silo-dim { color: var(--silo-dim); }
+.silo-warn { color: var(--silo-warn); }
+.silo-error { color: var(--silo-error); }
+.silo-frame {
+    border: 1px solid var(--silo-border);
+    padding: 1.5rem 2rem;
+}
