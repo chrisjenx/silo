@@ -70,6 +70,7 @@ fun Application.module() {
         FileSystemCacheStore(
             root = config.storageRoot,
             maxEntryBytes = config.maxEntryBytes,
+            metadataIndex = metadataIndex,
         )
     val readinessProbe = ReadinessProbe(config.storageRoot, metadataIndex)
     val reconciliationEngine = ReconciliationEngine(root = config.storageRoot, index = metadataIndex)

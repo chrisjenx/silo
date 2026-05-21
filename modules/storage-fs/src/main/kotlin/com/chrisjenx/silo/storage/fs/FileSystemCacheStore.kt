@@ -63,6 +63,7 @@ class FileSystemCacheStore(
     private val fsyncDirOnRename: Boolean = true,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val mover: AtomicMover = DefaultAtomicMover,
+    private val metadataIndex: com.chrisjenx.silo.storage.MetadataIndex? = null,
 ) : CacheStore {
     private val log = LoggerFactory.getLogger(FileSystemCacheStore::class.java)
     private val hits = AtomicLong(0)
@@ -70,6 +71,7 @@ class FileSystemCacheStore(
     private val puts = AtomicLong(0)
     private val evictions = AtomicLong(0)
     private val crossFsRenames = AtomicLong(0)
+    private val enoentDrifts = AtomicLong(0)
 
     /**
      * Number of times the atomic-rename path fell back to copy+delete because
@@ -79,6 +81,13 @@ class FileSystemCacheStore(
      */
     val crossFsRenameCount: Long get() = crossFsRenames.get()
 
+    /**
+     * Number of times a GET found a SQLite row for a key whose blob had
+     * vanished from disk. Surfaced as
+     * `silo_drift_detected_total{kind="missing_blob"}` once metrics land.
+     */
+    val enoentDriftCount: Long get() = enoentDrifts.get()
+
     init {
         Files.createDirectories(root.resolve("cas"))
     }
@@ -87,6 +96,16 @@ class FileSystemCacheStore(
         withContext(ioDispatcher) {
             val path = ShardLayout.finalPath(root, key)
             if (!Files.exists(path)) {
+                // Out-of-band delete? If the metadata index still has the
+                // row, this is a drift case — purge the row so future GETs
+                // (and reconciliation) are consistent.
+                metadataIndex?.let { index ->
+                    if (index.get(key) != null) {
+                        index.delete(key)
+                        enoentDrifts.incrementAndGet()
+                        log.warn("ENOENT drift self-heal: purging metadata row for key={}", key.short)
+                    }
+                }
                 misses.incrementAndGet()
                 return@withContext null
             }
