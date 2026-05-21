@@ -1,6 +1,7 @@
 [versions]
 kotlin = "2.1.20"
 kotlinx-coroutines = "1.10.2"
+kotlinx-io = "0.6.0"
 kotlinx-serialization = "1.8.0"
 ktor = "3.5.0"
 kotest = "6.0.0.M4"
@@ -23,6 +24,7 @@ mockk = "1.13.13"
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-slf4j = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-slf4j", version.ref = "kotlinx-coroutines" }
+kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinx-io" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 
 # Ktor server
