@@ -1,0 +1,12 @@
+{
+  // markdownlint-cli2 configuration for the Silo docs.
+  // We disable purely cosmetic rules where our project style intentionally
+  // differs (long prose lines, compact tables, unlabeled ASCII blocks).
+  "MD013": false,
+  "MD040": false,
+  "MD041": false,
+  "MD033": false,
+  "MD060": false,
+  "MD024": { "siblings_only": true },
+  "MD036": false
+}

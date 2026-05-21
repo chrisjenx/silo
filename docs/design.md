@@ -172,7 +172,7 @@ Underline only, no boxes:
 URL: _____________________________
 ```
 
-Focus shows a blinking `█` cursor at the end. Validation errors prefixed with `! `.
+Focus shows a blinking `█` cursor at the end. Validation errors prefixed with `!`.
 
 ### Modal
 

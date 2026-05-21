@@ -1,8 +1,7 @@
 # Gradle
 .gradle/
-build/
+**/build/
 !gradle/wrapper/gradle-wrapper.jar
-!**/build/
 out/
 
 # Kotlin

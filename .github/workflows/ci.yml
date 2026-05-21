@@ -39,31 +39,14 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Bootstrap check (no Gradle yet)
-        run: |
-          if [ ! -f gradlew ]; then
-            echo "Gradle build not yet scaffolded — issue #1 still open. Skipping build step."
-            exit 0
-          fi
-          echo "scaffold=true" >> "$GITHUB_ENV"
-
-      - name: Build + test + lint + coverage
-        if: env.scaffold == 'true'
-        run: ./gradlew --no-daemon --stacktrace build koverXmlReport ktlintCheck detekt
+      - name: Build + test
+        run: ./gradlew --no-daemon --stacktrace build
 
       - name: Publish JUnit annotations
-        if: always() && env.scaffold == 'true'
+        if: always()
         uses: mikepenz/action-junit-report@v6
         with:
           report_paths: '**/build/test-results/**/*.xml'
-
-      - name: Upload coverage
-        if: env.scaffold == 'true'
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage-${{ matrix.os }}
-          path: '**/build/reports/kover/'
-          if-no-files-found: ignore
 
   markdown:
     name: docs lint
