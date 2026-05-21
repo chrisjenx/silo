@@ -23,11 +23,13 @@ rootProject.name = "silo"
 include(
     ":protocol",
     ":storage",
+    ":storage-fs",
     ":server",
     ":test-fixtures",
 )
 
 project(":protocol").projectDir = file("modules/protocol")
 project(":storage").projectDir = file("modules/storage")
+project(":storage-fs").projectDir = file("modules/storage-fs")
 project(":server").projectDir = file("modules/server")
 project(":test-fixtures").projectDir = file("modules/test-fixtures")
