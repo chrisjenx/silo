@@ -20,6 +20,7 @@ import com.chrisjenx.silo.storage.MetadataIndex
 import com.chrisjenx.silo.storage.fs.FileSystemCacheStore
 import com.chrisjenx.silo.storage.fs.ReconciliationEngine
 import com.chrisjenx.silo.storage.fs.StorageRootLock
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 
 /**
  * Container holding the lifecycle-bound services Silo routes consult.
@@ -34,4 +35,5 @@ class SiloServices(
     val storageRootLock: StorageRootLock?,
     val auth: AuthSettings,
     val reconciliationEngine: ReconciliationEngine,
+    val meterRegistry: PrometheusMeterRegistry,
 )
