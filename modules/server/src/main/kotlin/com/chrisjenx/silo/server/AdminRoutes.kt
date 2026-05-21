@@ -15,8 +15,11 @@
  */
 package com.chrisjenx.silo.server
 
+import com.chrisjenx.silo.server.auth.AuthSettings
 import com.chrisjenx.silo.server.auth.Role
 import com.chrisjenx.silo.server.auth.SiloPrincipal
+import com.chrisjenx.silo.storage.CacheStore
+import com.chrisjenx.silo.storage.MetadataIndex
 import com.chrisjenx.silo.storage.fs.ReconciliationEngine
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -26,6 +29,7 @@ import io.ktor.server.auth.principal
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 
@@ -33,7 +37,17 @@ import io.ktor.server.routing.route
  * Admin namespace. Currently exposes the manual reconcile trigger; future
  * admin endpoints (stats, config, etc.) attach to the same route block.
  */
-fun Route.adminRoutes(reconciliationEngine: ReconciliationEngine) {
+fun Route.adminRoutes(
+    reconciliationEngine: ReconciliationEngine,
+    cacheStore: CacheStore,
+    metadataIndex: MetadataIndex,
+    auth: AuthSettings,
+) {
+    authenticate("silo", optional = true) {
+        route("/api/stats") {
+            get { call.handleStats(cacheStore, metadataIndex, auth) }
+        }
+    }
     authenticate("silo") {
         route("/api/storage") {
             post("/reconcile") {
@@ -53,6 +67,46 @@ fun Route.adminRoutes(reconciliationEngine: ReconciliationEngine) {
                 }
             }
         }
+    }
+}
+
+private suspend fun ApplicationCall.handleStats(
+    cacheStore: CacheStore,
+    metadataIndex: MetadataIndex,
+    auth: AuthSettings,
+) {
+    val principal = principal<SiloPrincipal>()
+    if (principal == null && !auth.anonymousRead) {
+        respond(HttpStatusCode.Unauthorized)
+        return
+    }
+    if (principal != null && Role.READ !in principal.roles) {
+        respond(HttpStatusCode.Forbidden)
+        return
+    }
+    val stats = cacheStore.stats()
+    val aggregate = metadataIndex.aggregate()
+    val hitRate =
+        if (stats.hits + stats.misses == 0L) {
+            0.0
+        } else {
+            stats.hits.toDouble() / (stats.hits + stats.misses).toDouble()
+        }
+    respondText(
+        contentType = ContentType.Application.Json,
+        status = HttpStatusCode.OK,
+    ) {
+        """
+        {
+          "entryCount": ${aggregate.entryCount},
+          "bytesStored": ${aggregate.bytesStored},
+          "hits": ${stats.hits},
+          "misses": ${stats.misses},
+          "puts": ${stats.puts},
+          "evictions": ${stats.evictions},
+          "hitRate": $hitRate
+        }
+        """.trimIndent()
     }
 }
 
