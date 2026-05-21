@@ -45,10 +45,11 @@ After your first clone, run:
 ./gradlew installGitHooks
 ```
 
-This points `core.hooksPath` at `.githooks/`. The pre-commit hook runs
-`spotlessApply`, `ktlintFormat`, and `detekt` on staged Kotlin files;
-auto-fixes are re-staged, detekt violations block the commit. Skip with
-`git commit --no-verify` (not recommended).
+This points `core.hooksPath` at `.githooks/`. The pre-commit hook fires
+only when at least one `.kt`/`.kts` file is staged. It then auto-formats
+the whole tree (`spotlessApply` + `ktlintFormat`) and re-stages any
+fixes, and runs `detekt` across the project; detekt violations block
+the commit. Skip with `git commit --no-verify` (not recommended).
 
 ## Conventional Commits
 
