@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 # --- Stage 1: build ---
-FROM gradle:8.10-jdk21-alpine AS build
+FROM gradle:9.5-jdk21-alpine AS build
 WORKDIR /src
 
 # Warm dependency cache layer

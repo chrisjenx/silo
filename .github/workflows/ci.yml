@@ -24,18 +24,18 @@ jobs:
         os: [ubuntu-latest, ubuntu-24.04-arm]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v6
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
@@ -53,13 +53,13 @@ jobs:
 
       - name: Publish JUnit annotations
         if: always() && env.scaffold == 'true'
-        uses: mikepenz/action-junit-report@v4
+        uses: mikepenz/action-junit-report@v6
         with:
           report_paths: '**/build/test-results/**/*.xml'
 
       - name: Upload coverage
         if: env.scaffold == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-${{ matrix.os }}
           path: '**/build/reports/kover/'
@@ -69,10 +69,10 @@ jobs:
     name: docs lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
       - name: Lint markdown
         run: npx --yes markdownlint-cli2 "**/*.md" "#node_modules" "#build"
 
@@ -80,8 +80,8 @@ jobs:
     name: link check (docs)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: lycheeverse/lychee-action@v1
+      - uses: actions/checkout@v6
+      - uses: lycheeverse/lychee-action@v2
         with:
           args: --no-progress --offline --include-fragments "**/*.md"
           fail: true

@@ -15,16 +15,16 @@ jobs:
     name: k6 regression gate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Bootstrap check
         run: |
@@ -63,7 +63,7 @@ jobs:
 
       - name: Restore baseline
         if: env.scaffolded == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: bench/baselines/main.json
           key: bench-baseline-${{ github.ref_name }}
@@ -86,6 +86,6 @@ jobs:
 
       - name: Post results comment
         if: env.scaffolded == 'true' && github.event_name == 'push'
-        uses: peter-evans/commit-comment@v3
+        uses: peter-evans/commit-comment@v4
         with:
           body-path: bench-summary.md
