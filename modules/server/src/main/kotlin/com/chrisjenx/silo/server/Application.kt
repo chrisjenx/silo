@@ -111,6 +111,7 @@ fun Application.installSiloModule(services: SiloServices) {
                 call.respondText("not-ready", status = HttpStatusCode.ServiceUnavailable)
             }
         }
+        cacheRoutes(services.cacheStore)
     }
 }
 
