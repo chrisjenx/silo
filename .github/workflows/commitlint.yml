@@ -27,7 +27,8 @@ jobs:
             build
             ci
           requireScope: false
-          subjectPattern: ^(?![A-Z]).+$
+          subjectPattern: ^(?![A-Z]).{1,72}$
           subjectPatternError: |
-            PR title subject must not start with an uppercase letter (Conventional Commits).
+            PR title subject must start with a lowercase letter and be 1–72 characters
+            (Conventional Commits). Move detail to the PR description.
           validateSingleCommit: false

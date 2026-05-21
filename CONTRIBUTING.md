@@ -51,6 +51,9 @@ perf(eviction): batch last_access updates
 
 Allowed types: `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `chore`, `build`, `ci`.
 
+The PR title subject (the bit after `type:` or `type(scope):`) must be lowercase
+and 1–72 characters. Move detail to the PR description.
+
 Breaking changes: append `!` (`feat!: rename CacheStore.put → CacheStore.store`) and explain in the body.
 
 `release-please` reads commits to generate the changelog. **Never edit `CHANGELOG.md` by hand.**
