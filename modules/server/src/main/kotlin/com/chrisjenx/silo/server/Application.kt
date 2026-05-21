@@ -148,7 +148,12 @@ fun Application.installSiloModule(services: SiloServices) {
             )
         }
         cacheRoutes(services.cacheStore, services.auth, services.config.maxEntryBytes)
-        adminRoutes(services.reconciliationEngine)
+        adminRoutes(
+            reconciliationEngine = services.reconciliationEngine,
+            cacheStore = services.cacheStore,
+            metadataIndex = services.metadataIndex,
+            auth = services.auth,
+        )
     }
 }
 
