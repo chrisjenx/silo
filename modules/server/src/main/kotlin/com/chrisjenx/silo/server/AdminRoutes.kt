@@ -42,10 +42,14 @@ fun Route.adminRoutes(
     cacheStore: CacheStore,
     metadataIndex: MetadataIndex,
     auth: AuthSettings,
+    storageRoot: java.nio.file.Path,
 ) {
     authenticate("silo", optional = true) {
         route("/api/stats") {
             get { call.handleStats(cacheStore, metadataIndex, auth) }
+        }
+        get("/api/storage") {
+            call.handleStorage(metadataIndex, auth, storageRoot)
         }
     }
     authenticate("silo") {
@@ -105,6 +109,47 @@ private suspend fun ApplicationCall.handleStats(
           "puts": ${stats.puts},
           "evictions": ${stats.evictions},
           "hitRate": $hitRate
+        }
+        """.trimIndent()
+    }
+}
+
+private suspend fun ApplicationCall.handleStorage(
+    metadataIndex: MetadataIndex,
+    auth: AuthSettings,
+    storageRoot: java.nio.file.Path,
+) {
+    val principal = principal<SiloPrincipal>()
+    if (principal == null && !auth.anonymousRead) {
+        respond(HttpStatusCode.Unauthorized)
+        return
+    }
+    if (principal != null && Role.READ !in principal.roles) {
+        respond(HttpStatusCode.Forbidden)
+        return
+    }
+    val agg = metadataIndex.aggregate()
+    val fileStore =
+        try {
+            java.nio.file.Files.getFileStore(storageRoot)
+        } catch (_: java.io.IOException) {
+            null
+        }
+    val usableSpace = fileStore?.usableSpace ?: -1
+    val totalSpace = fileStore?.totalSpace ?: -1
+    val fsType = fileStore?.type() ?: "unknown"
+    respondText(
+        contentType = ContentType.Application.Json,
+        status = HttpStatusCode.OK,
+    ) {
+        """
+        {
+          "root": "${storageRoot.toAbsolutePath()}",
+          "fsType": "$fsType",
+          "entryCount": ${agg.entryCount},
+          "bytesStored": ${agg.bytesStored},
+          "usableSpaceBytes": $usableSpace,
+          "totalSpaceBytes": $totalSpace
         }
         """.trimIndent()
     }
