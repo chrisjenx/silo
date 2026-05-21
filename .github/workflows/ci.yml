@@ -81,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: lycheeverse/lychee-action@v1
+      - uses: lycheeverse/lychee-action@v2.0.2
         with:
           args: --no-progress --offline --include-fragments "**/*.md"
           fail: true
