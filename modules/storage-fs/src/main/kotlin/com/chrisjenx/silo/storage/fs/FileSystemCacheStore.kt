@@ -19,6 +19,7 @@ import com.chrisjenx.silo.protocol.CacheKey
 import com.chrisjenx.silo.storage.CacheReadHandle
 import com.chrisjenx.silo.storage.CacheStats
 import com.chrisjenx.silo.storage.CacheStore
+import com.chrisjenx.silo.storage.NoSpaceReason
 import com.chrisjenx.silo.storage.PutOutcome
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +65,7 @@ class FileSystemCacheStore(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val mover: AtomicMover = DefaultAtomicMover,
     private val metadataIndex: com.chrisjenx.silo.storage.MetadataIndex? = null,
+    private val reservedFreeBytes: Long = 0,
 ) : CacheStore {
     private val log = LoggerFactory.getLogger(FileSystemCacheStore::class.java)
     private val hits = AtomicLong(0)
@@ -124,35 +126,36 @@ class FileSystemCacheStore(
             if (size > maxEntryBytes) {
                 return@withContext PutOutcome.RejectedTooLarge(size, maxEntryBytes)
             }
+            if (reservedFreeBytes > 0) {
+                val usable =
+                    try {
+                        Files.getFileStore(root).usableSpace
+                    } catch (e: IOException) {
+                        log.debug("could not query usable space: {}", e.message)
+                        Long.MAX_VALUE
+                    }
+                if (usable - size < reservedFreeBytes) {
+                    log.warn(
+                        "PUT rejected: reserved-free-bytes threshold tripped (usable={} reserved={} size={})",
+                        usable,
+                        reservedFreeBytes,
+                        size,
+                    )
+                    return@withContext PutOutcome.NoSpace(NoSpaceReason.RESERVED_FREE_BYTES)
+                }
+            }
             val shardDir = ShardLayout.shardDir(root, key)
             Files.createDirectories(shardDir)
             val tmp = ShardLayout.tempPath(root, key, UUID.randomUUID().toString())
             val final = ShardLayout.finalPath(root, key)
 
-            var written = 0L
-            FileChannel.open(
-                tmp,
-                StandardOpenOption.CREATE_NEW,
-                StandardOpenOption.WRITE,
-            ).use { ch ->
-                val src: Source = body.buffered()
-                val buffer = ByteArray(STREAM_BUFFER_SIZE)
-                val nio = java.nio.ByteBuffer.wrap(buffer)
-                while (true) {
-                    val n = src.readAtMostTo(buffer, 0, buffer.size)
-                    if (n == -1) break
-                    nio.position(0)
-                    nio.limit(n)
-                    while (nio.hasRemaining()) ch.write(nio)
-                    written += n
-                }
-                if (written != size) {
-                    Files.deleteIfExists(tmp)
-                    throw IOException(
-                        "short write for key=${key.short}: declared=$size actual=$written",
-                    )
-                }
-                ch.force(true)
+            try {
+                runStreamingPut(tmp, key, size, body)
+            } catch (e: IOException) {
+                val reason = classifyNoSpace(e) ?: throw e
+                Files.deleteIfExists(tmp)
+                log.warn("PUT failed with {}: key={} message={}", reason, key.short, e.message)
+                return@withContext PutOutcome.NoSpace(reason)
             }
 
             try {
@@ -212,6 +215,47 @@ class FileSystemCacheStore(
                 evictions = evictions.get(),
             )
         }
+
+    private fun runStreamingPut(
+        tmp: Path,
+        key: CacheKey,
+        size: Long,
+        body: RawSource,
+    ) {
+        var written = 0L
+        FileChannel.open(
+            tmp,
+            StandardOpenOption.CREATE_NEW,
+            StandardOpenOption.WRITE,
+        ).use { ch ->
+            val src: Source = body.buffered()
+            val buffer = ByteArray(STREAM_BUFFER_SIZE)
+            val nio = java.nio.ByteBuffer.wrap(buffer)
+            while (true) {
+                val n = src.readAtMostTo(buffer, 0, buffer.size)
+                if (n == -1) break
+                nio.position(0)
+                nio.limit(n)
+                while (nio.hasRemaining()) ch.write(nio)
+                written += n
+            }
+            if (written != size) {
+                throw IOException(
+                    "short write for key=${key.short}: declared=$size actual=$written",
+                )
+            }
+            ch.force(true)
+        }
+    }
+
+    private fun classifyNoSpace(e: IOException): NoSpaceReason? {
+        val msg = e.message?.lowercase() ?: return null
+        return when {
+            "no space left" in msg || "enospc" in msg -> NoSpaceReason.ENOSPC
+            "disk quota" in msg || "edquot" in msg -> NoSpaceReason.EDQUOT
+            else -> null
+        }
+    }
 
     private fun fsTypeOfStore(path: Path): String =
         try {

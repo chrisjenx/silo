@@ -36,4 +36,14 @@ sealed interface PutOutcome {
      * maps this to `413 Payload Too Large`.
      */
     data class RejectedTooLarge(val sizeBytes: Long, val maxBytes: Long) : PutOutcome
+
+    /**
+     * The backend ran out of room (ENOSPC, EDQUOT, or the configured
+     * reserved-free-bytes threshold tripped). The HTTP layer maps this to
+     * `503 Service Unavailable` so the Gradle client retries.
+     */
+    data class NoSpace(val reason: NoSpaceReason) : PutOutcome
 }
+
+/** Sub-classification surfaced to metrics. */
+enum class NoSpaceReason { ENOSPC, EDQUOT, RESERVED_FREE_BYTES }
