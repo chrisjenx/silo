@@ -20,6 +20,9 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.RawSource
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 
 class EvictionEngineSpec : StringSpec({
 
@@ -66,6 +69,58 @@ class EvictionEngineSpec : StringSpec({
                 )
             engine.sweep() shouldBe 2
             engine.evictionsFor(EvictionReason.ENTRY_CAP) shouldBe 2L
+        }
+    }
+
+    "TTL pass evicts entries older than maxAgeMs, ahead of cap-based eviction" {
+        runBlocking {
+            val now = 10_000L
+            val clock = Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC)
+            val store = RecordingStore()
+            val index =
+                InMemoryMetadataIndex().apply {
+                    seed("0".repeat(64), size = 1, ts = 1_000) // 9000ms old → expired
+                    seed("1".repeat(64), size = 1, ts = 2_000) // 8000ms old → expired
+                    seed("2".repeat(64), size = 1, ts = 9_999) // 1ms old → safe
+                }
+            val engine =
+                EvictionEngine(
+                    store = store,
+                    index = index,
+                    caps =
+                        EvictionCaps(
+                            maxBytes = Long.MAX_VALUE,
+                            maxEntries = Long.MAX_VALUE,
+                            maxAgeMs = 5_000,
+                        ),
+                    clock = clock,
+                )
+            engine.sweep() shouldBe 2
+            engine.evictionsFor(EvictionReason.TTL) shouldBe 2L
+            store.deleted.map { it.value } shouldBe listOf("0".repeat(64), "1".repeat(64))
+        }
+    }
+
+    "maxAgeMs = 0 disables the TTL pass" {
+        runBlocking {
+            val store = RecordingStore()
+            val index =
+                InMemoryMetadataIndex().apply {
+                    seed("a".repeat(16), size = 1, ts = 1)
+                }
+            val engine =
+                EvictionEngine(
+                    store = store,
+                    index = index,
+                    caps =
+                        EvictionCaps(
+                            maxBytes = Long.MAX_VALUE,
+                            maxEntries = Long.MAX_VALUE,
+                            maxAgeMs = 0,
+                        ),
+                )
+            engine.sweep() shouldBe 0
+            engine.evictionsFor(EvictionReason.TTL) shouldBe 0L
         }
     }
 
@@ -151,6 +206,15 @@ private class InMemoryMetadataIndex : MetadataIndex {
     override suspend fun lruVictims(limit: Int): List<EntryRecord> =
         rows.values
             .filter { it.status == EntryStatus.COMMITTED }
+            .sortedBy { it.lastAccessMs }
+            .take(limit)
+
+    override suspend fun expiredVictims(
+        olderThanMs: Long,
+        limit: Int,
+    ): List<EntryRecord> =
+        rows.values
+            .filter { it.status == EntryStatus.COMMITTED && it.lastAccessMs < olderThanMs }
             .sortedBy { it.lastAccessMs }
             .take(limit)
 

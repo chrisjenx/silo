@@ -30,6 +30,8 @@ data class EvictionCaps(
     val maxEntries: Long,
     /** Per-cycle delete budget so a tight overshoot doesn't I/O-storm. */
     val maxDeletesPerCycle: Int = DEFAULT_MAX_DELETES_PER_CYCLE,
+    /** TTL in ms. Entries untouched longer than this are reaped first. 0 disables. */
+    val maxAgeMs: Long = 0,
 ) {
     companion object {
         const val DEFAULT_MAX_DELETES_PER_CYCLE: Int = 1_000
@@ -37,7 +39,7 @@ data class EvictionCaps(
 }
 
 /** Reasons surfaced to metrics so operators can see why a victim went. */
-enum class EvictionReason { BYTE_CAP, ENTRY_CAP }
+enum class EvictionReason { BYTE_CAP, ENTRY_CAP, TTL }
 
 /**
  * Picks the least-recently-accessed entries from the [MetadataIndex] and
@@ -49,16 +51,19 @@ class EvictionEngine(
     private val store: CacheStore,
     private val index: MetadataIndex,
     private val caps: EvictionCaps,
+    private val clock: java.time.Clock = java.time.Clock.systemUTC(),
 ) {
     private val log = LoggerFactory.getLogger(EvictionEngine::class.java)
     private val byteCapEvictions = AtomicLong(0)
     private val entryCapEvictions = AtomicLong(0)
+    private val ttlEvictions = AtomicLong(0)
 
     /** Evictions attributable to [reason] over the lifetime of this engine. */
     fun evictionsFor(reason: EvictionReason): Long =
         when (reason) {
             EvictionReason.BYTE_CAP -> byteCapEvictions.get()
             EvictionReason.ENTRY_CAP -> entryCapEvictions.get()
+            EvictionReason.TTL -> ttlEvictions.get()
         }
 
     /**
@@ -68,6 +73,11 @@ class EvictionEngine(
     suspend fun sweep(): Int {
         var deleted = 0
         var budget = caps.maxDeletesPerCycle
+        if (caps.maxAgeMs > 0) {
+            val ttlDeleted = runTtlPass(budget)
+            deleted += ttlDeleted
+            budget -= ttlDeleted
+        }
         var keepGoing = budget > 0
         while (keepGoing) {
             keepGoing = runOneSweepPass(budget)?.also { (n, reason) ->
@@ -78,11 +88,30 @@ class EvictionEngine(
         }
         if (deleted > 0) {
             log.info(
-                "eviction sweep deleted {} entries (byteCap={} entryCap={})",
+                "eviction sweep deleted {} entries (ttl={} byteCap={} entryCap={})",
                 deleted,
+                ttlEvictions.get(),
                 byteCapEvictions.get(),
                 entryCapEvictions.get(),
             )
+        }
+        return deleted
+    }
+
+    private suspend fun runTtlPass(initialBudget: Int): Int {
+        val cutoff = clock.millis() - caps.maxAgeMs
+        var budget = initialBudget
+        var deleted = 0
+        while (budget > 0) {
+            val victims = index.expiredVictims(cutoff, minOf(budget, TTL_BATCH_SIZE))
+            if (victims.isEmpty()) return deleted
+            victims.forEach { v ->
+                store.delete(v.key)
+                index.delete(v.key)
+                deleted += 1
+                budget -= 1
+                ttlEvictions.incrementAndGet()
+            }
         }
         return deleted
     }
@@ -111,6 +140,7 @@ class EvictionEngine(
         when (reason) {
             EvictionReason.BYTE_CAP -> byteCapEvictions.incrementAndGet()
             EvictionReason.ENTRY_CAP -> entryCapEvictions.incrementAndGet()
+            EvictionReason.TTL -> ttlEvictions.incrementAndGet()
         }
     }
 
@@ -119,5 +149,9 @@ class EvictionEngine(
         // victim — over-aggressive batches would push the cache below the
         // cap rather than barely under it.
         private const val EVICTION_BATCH_SIZE: Int = 1
+
+        // TTL deletes can run in larger batches — every entry past the
+        // cutoff is already a goner regardless of cap state.
+        private const val TTL_BATCH_SIZE: Int = 64
     }
 }
