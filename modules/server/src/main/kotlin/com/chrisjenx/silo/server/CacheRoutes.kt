@@ -53,12 +53,13 @@ import kotlinx.io.readByteArray
 fun Route.cacheRoutes(
     store: CacheStore,
     auth: AuthSettings,
+    maxEntryBytes: Long,
 ) {
     authenticate("silo", optional = true) {
         route("/cache/{key}") {
             get { call.handleGet(store, auth) }
             head { call.handleHead(store, auth) }
-            put { call.handlePut(store) }
+            put { call.handlePut(store, maxEntryBytes) }
         }
     }
 }
@@ -100,12 +101,20 @@ private suspend fun ApplicationCall.handleHead(
     }
 }
 
-private suspend fun ApplicationCall.handlePut(store: CacheStore) {
+private suspend fun ApplicationCall.handlePut(
+    store: CacheStore,
+    maxEntryBytes: Long,
+) {
     if (!authorize(Role.WRITE, allowAnonymous = false)) return
     val key = parsedKey() ?: return respond(HttpStatusCode.BadRequest)
     val declaredSize = request.contentLength()
     if (declaredSize == null || declaredSize < 0) {
         return respond(HttpStatusCode.LengthRequired)
+    }
+    // Reject oversize before reading the body — short-circuits Ktor's
+    // Expect: 100-continue handshake so the client does not upload.
+    if (declaredSize > maxEntryBytes) {
+        return respond(HttpStatusCode.PayloadTooLarge)
     }
     val source = receiveChannel().toInputStream().asSource().buffered()
     when (store.put(key, declaredSize, source)) {
