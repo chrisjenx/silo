@@ -59,6 +59,13 @@ interface MetadataIndex : AutoCloseable {
     /** Aggregate (count, totalBytes) snapshot for `/api/stats` and metrics. */
     suspend fun aggregate(): MetadataAggregate
 
+    /**
+     * Returns the [limit] least-recently-accessed entries (oldest first),
+     * for the eviction engine to feed to [delete]. Only `COMMITTED` rows
+     * are considered.
+     */
+    suspend fun lruVictims(limit: Int): List<EntryRecord>
+
     /** Explicitly flush any buffered access-time updates. */
     suspend fun flush()
 
