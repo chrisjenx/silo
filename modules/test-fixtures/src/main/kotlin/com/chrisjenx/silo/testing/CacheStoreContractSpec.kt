@@ -148,6 +148,8 @@ abstract class CacheStoreContractSpec : BehaviorSpec() {
                         is PutOutcome.Stored, is PutOutcome.AlreadyPresent -> Unit
                         is PutOutcome.RejectedTooLarge ->
                             error("second put must not be rejected when first succeeded")
+                        is PutOutcome.NoSpace ->
+                            error("second put must not fail with NoSpace when first succeeded")
                     }
                     store.has(key) shouldBe true
                 }

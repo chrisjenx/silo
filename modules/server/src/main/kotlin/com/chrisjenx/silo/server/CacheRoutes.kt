@@ -113,6 +113,8 @@ private suspend fun ApplicationCall.handlePut(store: CacheStore) {
             respond(HttpStatusCode.OK)
         is PutOutcome.RejectedTooLarge ->
             respond(HttpStatusCode.PayloadTooLarge)
+        is PutOutcome.NoSpace ->
+            respond(HttpStatusCode.ServiceUnavailable)
     }
 }
 
