@@ -2,6 +2,7 @@ plugins {
     id("org.jetbrains.kotlin.jvm")
     id("org.jlleitschuh.gradle.ktlint")
     id("io.gitlab.arturbosch.detekt")
+    id("com.diffplug.spotless")
 }
 
 kotlin {
@@ -50,4 +51,13 @@ tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
 
 tasks.withType<io.gitlab.arturbosch.detekt.DetektCreateBaselineTask>().configureEach {
     jvmTarget = "21"
+}
+
+spotless {
+    val licenseHeader = rootProject.file("config/license/HEADER.kt").readText()
+    kotlin {
+        target("src/**/*.kt")
+        targetExclude("**/build/**", "**/generated/**")
+        licenseHeader(licenseHeader)
+    }
 }
