@@ -32,6 +32,12 @@ value class CacheKey private constructor(val value: String) {
     /** The first 12 chars of the key, intended for log lines. */
     val short: String get() = value.substring(0, 12.coerceAtMost(value.length))
 
+    /**
+     * Returns the raw key value. **Do not pass a [CacheKey] directly to a
+     * logger** — CLAUDE.md restricts log lines to the [short] prefix. The
+     * full value is exposed here for filesystem layout, HTTP responses, and
+     * SQLite inserts, not for emission to stdout.
+     */
     override fun toString(): String = value
 
     companion object {
