@@ -218,6 +218,16 @@ private class InMemoryMetadataIndex : MetadataIndex {
             .sortedBy { it.lastAccessMs }
             .take(limit)
 
+    override suspend fun pageKeysAfter(
+        after: String?,
+        limit: Int,
+    ): List<CacheKey> =
+        rows.values
+            .filter { it.status == EntryStatus.COMMITTED && it.key.value > (after ?: "") }
+            .sortedBy { it.key.value }
+            .map { it.key }
+            .take(limit)
+
     override suspend fun flush() {}
 
     override fun close() {}

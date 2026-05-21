@@ -11,5 +11,6 @@ dependencies {
     implementation(libs.slf4j.api)
 
     "unitTestImplementation"(project(":test-fixtures"))
+    "unitTestImplementation"(project(":metadata-sqlite"))
     "integrationTestImplementation"(project(":test-fixtures"))
 }

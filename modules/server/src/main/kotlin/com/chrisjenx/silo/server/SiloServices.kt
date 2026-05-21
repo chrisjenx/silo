@@ -18,6 +18,7 @@ package com.chrisjenx.silo.server
 import com.chrisjenx.silo.server.auth.AuthSettings
 import com.chrisjenx.silo.storage.MetadataIndex
 import com.chrisjenx.silo.storage.fs.FileSystemCacheStore
+import com.chrisjenx.silo.storage.fs.ReconciliationEngine
 import com.chrisjenx.silo.storage.fs.StorageRootLock
 
 /**
@@ -32,4 +33,5 @@ class SiloServices(
     val readinessProbe: ReadinessProbe,
     val storageRootLock: StorageRootLock?,
     val auth: AuthSettings,
+    val reconciliationEngine: ReconciliationEngine,
 )

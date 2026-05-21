@@ -135,6 +135,23 @@ class SqliteMetadataIndex private constructor(
             }
         }
 
+    override suspend fun pageKeysAfter(
+        after: String?,
+        limit: Int,
+    ): List<CacheKey> =
+        withContext(ioDispatcher) {
+            connection.prepareStatement(SQL_PAGE_KEYS).use { ps ->
+                ps.setInt(1, EntryStatus.COMMITTED.code)
+                ps.setString(2, after ?: "")
+                ps.setInt(3, limit)
+                ps.executeQuery().use { rs ->
+                    val out = mutableListOf<CacheKey>()
+                    while (rs.next()) out += CacheKey.requireValid(rs.getString(1))
+                    out
+                }
+            }
+        }
+
     override suspend fun aggregate(): MetadataAggregate =
         withContext(ioDispatcher) {
             connection.prepareStatement(SQL_AGGREGATE).use { ps ->
@@ -274,6 +291,14 @@ class SqliteMetadataIndex private constructor(
             FROM cache_entry
             WHERE status = ? AND last_access_ms < ?
             ORDER BY last_access_ms ASC
+            LIMIT ?
+            """.trimIndent()
+
+        private val SQL_PAGE_KEYS =
+            """
+            SELECT key FROM cache_entry
+            WHERE status = ? AND key > ?
+            ORDER BY key ASC
             LIMIT ?
             """.trimIndent()
 

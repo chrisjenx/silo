@@ -78,6 +78,7 @@ private fun buildServices(root: Path): SiloServices {
         metadataIndex = metadataIndex,
         readinessProbe = ReadinessProbe(root, metadataIndex),
         storageRootLock = null,
+        reconciliationEngine = com.chrisjenx.silo.storage.fs.ReconciliationEngine(root = root, index = metadataIndex),
         auth =
             com.chrisjenx.silo.server.auth.AuthSettings(
                 anonymousRead = true,
