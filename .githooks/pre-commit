@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Silo pre-commit hook.
+#
+# Runs spotlessApply + ktlintFormat on staged .kt files, then re-stages any
+# auto-fixed changes. Finally runs detekt on the same file set. Fails the
+# commit if detekt reports violations.
+#
+# To install: `./gradlew installGitHooks`. To bypass for one commit (not
+# recommended in CI): `git commit --no-verify`.
+
+set -euo pipefail
+
+staged_kt() {
+  git diff --cached --name-only --diff-filter=ACM -- '*.kt' '*.kts'
+}
+
+mapfile -t files < <(staged_kt)
+
+if [ ${#files[@]} -eq 0 ]; then
+  exit 0
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+echo "silo/pre-commit: formatting ${#files[@]} staged Kotlin file(s)..."
+
+./gradlew --quiet --no-daemon spotlessApply ktlintFormat \
+  || { echo "silo/pre-commit: format step failed — aborting commit"; exit 1; }
+
+# Re-stage any auto-fixes.
+git add -- "${files[@]}"
+
+echo "silo/pre-commit: running detekt..."
+./gradlew --quiet --no-daemon detekt \
+  || { echo "silo/pre-commit: detekt found violations — aborting commit"; exit 1; }
+
+exit 0

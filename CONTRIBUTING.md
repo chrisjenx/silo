@@ -37,6 +37,20 @@ cd silo
 - **Single concern per PR.** If you find yourself touching three unrelated areas, split.
 - **Run `./gradlew check` before pushing.** That runs unit + integration tests, ktlint, detekt, Kover thresholds.
 
+## Git hooks
+
+After your first clone, run:
+
+```bash
+./gradlew installGitHooks
+```
+
+This points `core.hooksPath` at `.githooks/`. The pre-commit hook fires
+only when at least one `.kt`/`.kts` file is staged. It then auto-formats
+the whole tree (`spotlessApply` + `ktlintFormat`) and re-stages any
+fixes, and runs `detekt` across the project; detekt violations block
+the commit. Skip with `git commit --no-verify` (not recommended).
+
 ## Conventional Commits
 
 PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/):
