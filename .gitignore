@@ -69,3 +69,4 @@ kover/
 # Node (for markdown tooling only)
 node_modules/
 package-lock.json
+.claude/

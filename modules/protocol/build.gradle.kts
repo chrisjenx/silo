@@ -5,4 +5,7 @@ plugins {
 
 dependencies {
     implementation(libs.kotlin.stdlib)
+
+    "unitTestImplementation"(project(":test-fixtures"))
+    "integrationTestImplementation"(project(":test-fixtures"))
 }
