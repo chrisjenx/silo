@@ -10,12 +10,13 @@ import io.kotest.core.spec.style.BehaviorSpec
  * Stubbed here so the wiring exists from day one; scenarios are added when
  * the interface and the first FS backend appear.
  */
-abstract class CacheStoreContractSpec : BehaviorSpec({
-    given("a freshly initialized store") {
-        `when`("the contract suite is wired up but the interface has not landed yet") {
-            then("the spec compiles and is discoverable by kotest") {
-                // Intentionally empty — scenarios arrive with issue #3.
+abstract class CacheStoreContractSpec :
+    BehaviorSpec({
+        given("a freshly initialized store") {
+            `when`("the contract suite is wired up but the interface has not landed yet") {
+                then("the spec compiles and is discoverable by kotest") {
+                    // Intentionally empty — scenarios arrive with issue #3.
+                }
             }
         }
-    }
-})
+    })

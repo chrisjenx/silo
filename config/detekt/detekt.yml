@@ -1,0 +1,63 @@
+# Silo detekt configuration.
+# Enforces the project anti-patterns called out in CLAUDE.md.
+
+build:
+  maxIssues: 0
+  excludeCorrectable: false
+
+config:
+  validation: true
+  warningsAsErrors: true
+  checkExhaustiveness: false
+
+processors:
+  active: true
+
+console-reports:
+  active: true
+  exclude:
+    - 'ProjectStatisticsReport'
+    - 'NotificationReport'
+    - 'FindingsReport'
+    - 'FileBasedFindingsReport'
+
+potential-bugs:
+  UnsafeCallOnNullableType:
+    active: true
+
+style:
+  MagicNumber:
+    active: false
+  MayBeConst:
+    active: false
+  ForbiddenMethodCall:
+    active: true
+    methods:
+      - reason: 'runBlocking is forbidden outside main() and tests (see CLAUDE.md anti-patterns)'
+        value: 'kotlinx.coroutines.runBlocking'
+      - reason: 'Thread.sleep blocks the carrier; use kotlinx.coroutines.delay in suspending code'
+        value: 'java.lang.Thread.sleep'
+    excludes:
+      - '**/Main.kt'
+      - '**/Application.kt'
+      - '**/unitTest/**'
+      - '**/integrationTest/**'
+      - '**/test/**'
+      - '**/buildSrc/**'
+  MaxLineLength:
+    active: false
+
+complexity:
+  TooManyFunctions:
+    active: false
+  LongParameterList:
+    active: false
+
+naming:
+  PackageNaming:
+    active: true
+    packagePattern: '^[a-z]+(\.[a-z][A-Za-z0-9]*)*$'
+
+empty-blocks:
+  EmptyFunctionBlock:
+    active: false

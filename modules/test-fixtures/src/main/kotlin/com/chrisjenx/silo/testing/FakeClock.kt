@@ -14,7 +14,6 @@ class FakeClock(
     initial: Instant = Instant.parse("2026-01-01T00:00:00Z"),
     private val zone: ZoneId = ZoneOffset.UTC,
 ) : Clock() {
-
     private val now = AtomicReference(initial)
 
     override fun getZone(): ZoneId = zone
@@ -23,7 +22,9 @@ class FakeClock(
 
     override fun instant(): Instant = now.get()
 
-    fun set(instant: Instant) { now.set(instant) }
+    fun set(instant: Instant) {
+        now.set(instant)
+    }
 
     fun advance(millis: Long) {
         now.updateAndGet { it.plusMillis(millis) }

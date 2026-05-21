@@ -11,14 +11,19 @@ import kotlin.random.Random
 object TestKeys {
     private const val HEX = "0123456789abcdef"
 
-    fun valid(length: Int = 64, seed: Long? = null): String {
+    fun valid(
+        length: Int = 64,
+        seed: Long? = null,
+    ): String {
         require(length in 8..128) { "key length must be in [8, 128], was $length" }
         val rng = if (seed != null) Random(seed) else Random.Default
         return buildString(length) { repeat(length) { append(HEX[rng.nextInt(16)]) } }
     }
 
-    fun sequence(count: Int, length: Int = 64): List<String> =
-        (0 until count).map { valid(length, seed = it.toLong()) }
+    fun sequence(
+        count: Int,
+        length: Int = 64,
+    ): List<String> = (0 until count).map { valid(length, seed = it.toLong()) }
 
     val tooShort: String = "abc"
     val tooLong: String = HEX.repeat(20).take(129)

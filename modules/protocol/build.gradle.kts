@@ -1,5 +1,5 @@
 plugins {
-    id("silo.kotlin-conventions")
+    id("silo.coverage-conventions")
     id("silo.testing-conventions")
 }
 
