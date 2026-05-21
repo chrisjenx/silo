@@ -17,12 +17,17 @@ package com.chrisjenx.silo.server
 
 import com.chrisjenx.silo.protocol.CacheKey
 import com.chrisjenx.silo.protocol.ContentTypes
+import com.chrisjenx.silo.server.auth.AuthSettings
+import com.chrisjenx.silo.server.auth.Role
+import com.chrisjenx.silo.server.auth.SiloPrincipal
 import com.chrisjenx.silo.storage.CacheStore
 import com.chrisjenx.silo.storage.PutOutcome
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
+import io.ktor.server.auth.authenticate
+import io.ktor.server.auth.principal
 import io.ktor.server.request.contentLength
 import io.ktor.server.request.receiveChannel
 import io.ktor.server.response.respond
@@ -40,19 +45,29 @@ import kotlinx.io.readByteArray
 /**
  * Mounts the Gradle build-cache protocol routes under `/cache/{key}`.
  *
- * The key parameter is validated against [CacheKey.parse] at the boundary;
- * downstream code is allowed to assume the key is a safe filesystem
- * component (no traversal, no separators).
+ * Auth posture:
+ * - PUT always requires a WRITE-role principal.
+ * - GET/HEAD require a READ-role principal unless [AuthSettings.anonymousRead]
+ *   is true, in which case anonymous requests are served.
  */
-fun Route.cacheRoutes(store: CacheStore) {
-    route("/cache/{key}") {
-        get { call.handleGet(store) }
-        head { call.handleHead(store) }
-        put { call.handlePut(store) }
+fun Route.cacheRoutes(
+    store: CacheStore,
+    auth: AuthSettings,
+) {
+    authenticate("silo", optional = true) {
+        route("/cache/{key}") {
+            get { call.handleGet(store, auth) }
+            head { call.handleHead(store, auth) }
+            put { call.handlePut(store) }
+        }
     }
 }
 
-private suspend fun ApplicationCall.handleGet(store: CacheStore) {
+private suspend fun ApplicationCall.handleGet(
+    store: CacheStore,
+    auth: AuthSettings,
+) {
+    if (!authorize(Role.READ, allowAnonymous = auth.anonymousRead)) return
     val key = parsedKey() ?: return respond(HttpStatusCode.BadRequest)
     val handle = store.get(key) ?: return respond(HttpStatusCode.NotFound)
     try {
@@ -69,7 +84,11 @@ private suspend fun ApplicationCall.handleGet(store: CacheStore) {
     }
 }
 
-private suspend fun ApplicationCall.handleHead(store: CacheStore) {
+private suspend fun ApplicationCall.handleHead(
+    store: CacheStore,
+    auth: AuthSettings,
+) {
+    if (!authorize(Role.READ, allowAnonymous = auth.anonymousRead)) return
     val key = parsedKey() ?: return respond(HttpStatusCode.BadRequest)
     val handle = store.get(key) ?: return respond(HttpStatusCode.NotFound)
     try {
@@ -82,6 +101,7 @@ private suspend fun ApplicationCall.handleHead(store: CacheStore) {
 }
 
 private suspend fun ApplicationCall.handlePut(store: CacheStore) {
+    if (!authorize(Role.WRITE, allowAnonymous = false)) return
     val key = parsedKey() ?: return respond(HttpStatusCode.BadRequest)
     val declaredSize = request.contentLength()
     if (declaredSize == null || declaredSize < 0) {
@@ -93,6 +113,26 @@ private suspend fun ApplicationCall.handlePut(store: CacheStore) {
             respond(HttpStatusCode.OK)
         is PutOutcome.RejectedTooLarge ->
             respond(HttpStatusCode.PayloadTooLarge)
+    }
+}
+
+private suspend fun ApplicationCall.authorize(
+    role: Role,
+    allowAnonymous: Boolean,
+): Boolean {
+    val principal = principal<SiloPrincipal>()
+    return when {
+        principal != null && role in principal.roles -> true
+        principal == null && allowAnonymous -> true
+        principal == null -> {
+            response.headers.append(HttpHeaders.WWWAuthenticate, "Basic realm=\"silo\", charset=\"UTF-8\"")
+            respond(HttpStatusCode.Unauthorized)
+            false
+        }
+        else -> {
+            respond(HttpStatusCode.Forbidden)
+            false
+        }
     }
 }
 

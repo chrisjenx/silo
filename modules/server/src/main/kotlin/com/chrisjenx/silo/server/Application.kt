@@ -16,6 +16,10 @@
 package com.chrisjenx.silo.server
 
 import com.chrisjenx.silo.metadata.sqlite.SqliteMetadataIndex
+import com.chrisjenx.silo.server.auth.AuthSettings
+import com.chrisjenx.silo.server.auth.PasswordVerifier
+import com.chrisjenx.silo.server.auth.UserStore
+import com.chrisjenx.silo.server.auth.installSiloAuth
 import com.chrisjenx.silo.storage.fs.FileSystemCacheStore
 import com.chrisjenx.silo.storage.fs.FilesystemSupport
 import com.chrisjenx.silo.storage.fs.StorageRootLock
@@ -67,6 +71,13 @@ fun Application.module() {
             maxEntryBytes = config.maxEntryBytes,
         )
     val readinessProbe = ReadinessProbe(config.storageRoot, metadataIndex)
+    val users = config.usersConfPath?.let { UserStore.loadFromFile(it) } ?: UserStore(emptyList())
+    val auth =
+        AuthSettings(
+            anonymousRead = config.anonymousRead,
+            users = users,
+            verifier = PasswordVerifier(),
+        )
     installSiloModule(
         SiloServices(
             config = config,
@@ -74,6 +85,7 @@ fun Application.module() {
             metadataIndex = metadataIndex,
             readinessProbe = readinessProbe,
             storageRootLock = lock,
+            auth = auth,
         ),
     )
 }
@@ -84,6 +96,7 @@ fun Application.module() {
  * without going through the production boot path.
  */
 fun Application.installSiloModule(services: SiloServices) {
+    installSiloAuth(services.auth)
     install(DefaultHeaders) {
         header("Server", "silo/${SiloVersion.version}")
     }
@@ -111,7 +124,7 @@ fun Application.installSiloModule(services: SiloServices) {
                 call.respondText("not-ready", status = HttpStatusCode.ServiceUnavailable)
             }
         }
-        cacheRoutes(services.cacheStore)
+        cacheRoutes(services.cacheStore, services.auth)
     }
 }
 

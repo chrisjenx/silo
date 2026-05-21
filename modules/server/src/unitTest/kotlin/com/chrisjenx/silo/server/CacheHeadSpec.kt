@@ -93,5 +93,11 @@ private fun buildServices(root: Path): SiloServices {
         metadataIndex = metadataIndex,
         readinessProbe = ReadinessProbe(root, metadataIndex),
         storageRootLock = null,
+        auth =
+            com.chrisjenx.silo.server.auth.AuthSettings(
+                anonymousRead = true,
+                users = com.chrisjenx.silo.server.auth.UserStore(emptyList()),
+                verifier = com.chrisjenx.silo.server.auth.PasswordVerifier(),
+            ),
     )
 }
