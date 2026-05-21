@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Silo contributors
+ * Copyright $YEAR Silo contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,18 +13,3 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.chrisjenx.silo.protocol
-
-import io.kotest.core.spec.style.BehaviorSpec
-import io.kotest.matchers.shouldBe
-
-class SmokeSpec :
-    BehaviorSpec({
-        given("the unit test source set") {
-            `when`("kotest is wired correctly") {
-                then("a trivial assertion passes") {
-                    (1 + 1) shouldBe 2
-                }
-            }
-        }
-    })
