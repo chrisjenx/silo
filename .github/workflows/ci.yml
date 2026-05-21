@@ -39,14 +39,22 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Build + test
-        run: ./gradlew --no-daemon --stacktrace build
+      - name: Build + check (test + ktlint + detekt + kover)
+        run: ./gradlew --no-daemon --stacktrace build check
 
       - name: Publish JUnit annotations
         if: always()
         uses: mikepenz/action-junit-report@v6
         with:
           report_paths: '**/build/test-results/**/*.xml'
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-${{ matrix.os }}
+          path: '**/build/reports/kover/'
+          if-no-files-found: ignore
 
   markdown:
     name: docs lint

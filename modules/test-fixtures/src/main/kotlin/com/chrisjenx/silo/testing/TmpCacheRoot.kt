@@ -13,19 +13,18 @@ import kotlin.io.path.deleteRecursively
 class TmpCacheRoot private constructor(
     val path: Path,
 ) : AutoCloseable {
-
     override fun close() {
         path.deleteRecursively()
     }
 
-    inline fun <R> use(block: (Path) -> R): R = try {
-        block(path)
-    } finally {
-        close()
-    }
+    inline fun <R> use(block: (Path) -> R): R =
+        try {
+            block(path)
+        } finally {
+            close()
+        }
 
     companion object {
-        fun create(prefix: String = "silo-test-"): TmpCacheRoot =
-            TmpCacheRoot(Files.createTempDirectory(prefix).absolute())
+        fun create(prefix: String = "silo-test-"): TmpCacheRoot = TmpCacheRoot(Files.createTempDirectory(prefix).absolute())
     }
 }
