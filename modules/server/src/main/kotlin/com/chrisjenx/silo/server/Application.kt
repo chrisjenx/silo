@@ -154,6 +154,7 @@ fun Application.installSiloModule(services: SiloServices) {
             metadataIndex = services.metadataIndex,
             auth = services.auth,
             storageRoot = services.config.storageRoot,
+            config = services.config,
         )
     }
 }

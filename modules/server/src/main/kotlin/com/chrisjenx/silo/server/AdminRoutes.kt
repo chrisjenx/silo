@@ -43,6 +43,7 @@ fun Route.adminRoutes(
     metadataIndex: MetadataIndex,
     auth: AuthSettings,
     storageRoot: java.nio.file.Path,
+    config: SiloConfig,
 ) {
     authenticate("silo", optional = true) {
         route("/api/stats") {
@@ -50,6 +51,9 @@ fun Route.adminRoutes(
         }
         get("/api/storage") {
             call.handleStorage(metadataIndex, auth, storageRoot)
+        }
+        get("/api/config") {
+            call.handleConfig(auth, config)
         }
     }
     authenticate("silo") {
@@ -150,6 +154,40 @@ private suspend fun ApplicationCall.handleStorage(
           "bytesStored": ${agg.bytesStored},
           "usableSpaceBytes": $usableSpace,
           "totalSpaceBytes": $totalSpace
+        }
+        """.trimIndent()
+    }
+}
+
+private suspend fun ApplicationCall.handleConfig(
+    auth: AuthSettings,
+    config: SiloConfig,
+) {
+    val principal = principal<SiloPrincipal>()
+    if (principal == null && !auth.anonymousRead) {
+        respond(HttpStatusCode.Unauthorized)
+        return
+    }
+    if (principal != null && Role.READ !in principal.roles) {
+        respond(HttpStatusCode.Forbidden)
+        return
+    }
+    respondText(
+        contentType = ContentType.Application.Json,
+        status = HttpStatusCode.OK,
+    ) {
+        """
+        {
+          "server": { "port": ${config.port}, "host": "${config.host}" },
+          "storage": {
+            "root": "${config.storageRoot}",
+            "maxEntryBytes": ${config.maxEntryBytes},
+            "allowUnsupportedFs": ${config.allowUnsupportedFs}
+          },
+          "auth": {
+            "anonymousRead": ${config.anonymousRead},
+            "usersConfPath": "${config.usersConfPath ?: ""}"
+          }
         }
         """.trimIndent()
     }
