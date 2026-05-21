@@ -39,8 +39,8 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Build + check (test + ktlint + detekt + kover)
-        run: ./gradlew --no-daemon --stacktrace build check
+      - name: Build + test + lint + coverage
+        run: ./gradlew --no-daemon --stacktrace build koverXmlReport ktlintCheck detekt spotlessCheck
 
       - name: Publish JUnit annotations
         if: always()
@@ -48,12 +48,28 @@ jobs:
         with:
           report_paths: '**/build/test-results/**/*.xml'
 
-      - name: Upload coverage report
+      - name: Upload kover XML reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-${{ matrix.os }}
-          path: '**/build/reports/kover/'
+          name: kover-xml-${{ matrix.os }}
+          path: '**/build/reports/kover/report.xml'
+          if-no-files-found: ignore
+
+      - name: Upload kover HTML reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: kover-html-${{ matrix.os }}
+          path: '**/build/reports/kover/html/'
+          if-no-files-found: ignore
+
+      - name: Upload detekt reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: detekt-${{ matrix.os }}
+          path: '**/build/reports/detekt/'
           if-no-files-found: ignore
 
   markdown:
