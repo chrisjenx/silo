@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>silo — admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0a0e0a;
+        --fg: #5dff5d;
+        --dim: #2f8f2f;
+      }
+      html, body { background: var(--bg); color: var(--fg); margin: 0; }
+      body {
+        font-family: ui-monospace, "JetBrains Mono", "Menlo", monospace;
+        font-size: 14px;
+        line-height: 1.4;
+        padding: 2rem;
+      }
+      pre { color: var(--dim); white-space: pre; }
+      .frame {
+        border: 1px solid var(--fg);
+        padding: 1.5rem 2rem;
+        max-width: 78ch;
+      }
+      a { color: var(--fg); }
+      .dim { color: var(--dim); }
+    </style>
+  </head>
+  <body>
+    <pre>
+███████╗██╗██╗      ██████╗
+██╔════╝██║██║     ██╔═══██╗
+███████╗██║██║     ██║   ██║
+╚════██║██║██║     ██║   ██║
+███████║██║███████╗╚██████╔╝
+╚══════╝╚═╝╚══════╝ ╚═════╝
+    </pre>
+    <div class="frame">
+      <p>admin spa pending — kobweb scaffold lands in a follow-up.</p>
+      <p class="dim">in the meantime, the json endpoints are live:</p>
+      <ul>
+        <li><a href="/api/stats">/api/stats</a></li>
+        <li><a href="/api/storage">/api/storage</a></li>
+        <li><a href="/api/config">/api/config</a></li>
+        <li><a href="/metrics">/metrics</a></li>
+        <li><a href="/health">/health</a> · <a href="/ready">/ready</a></li>
+      </ul>
+    </div>
+  </body>
+</html>
