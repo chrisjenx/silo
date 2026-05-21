@@ -96,7 +96,7 @@ Silo ships a single-page admin dashboard at `/admin`. The design language is int
 **terminal** — phosphor green on black, ASCII box-drawing, Unicode block sparklines, no
 chart libraries. See [`docs/design.md`](docs/design.md) for the full spec.
 
-![Silo admin dashboard placeholder](docs/img/dashboard.png)
+_Screenshot lands once the Dashboard page ships (tracked in the Walking Skeleton milestone)._
 
 ## Configuration
 
