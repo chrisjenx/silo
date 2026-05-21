@@ -46,7 +46,9 @@ What Silo expects from its host, and what to set if you're tuning for scale.
 ### NFS — **not supported**
 
 - `fsync` semantics on NFS are weak; `rename(2)` is not atomic over RPC; locking is unreliable.
-- Silo refuses to start if the storage root is on NFS (detected via `/proc/mounts` on Linux).
+- Silo refuses to start if the storage root is on `nfs` / `nfs3` / `nfs4`, detected by walking `/proc/self/mountinfo` (Linux) and matching the deepest mount point containing the storage root.
+- On macOS and Windows the detection is a no-op + WARN — there is no `/proc` equivalent, so we cannot reliably tell. Run with care.
+- Override (not recommended): `silo.storage.allow-unsupported-fs = true` downgrades the abort to a WARN. Use only if you are absolutely sure your filesystem is not actually NFS (e.g. a containerised test harness that lies to `mountinfo`).
 - Need network-shared storage? Wait for the S3 backend (v0.2) or run Silo locally on each node.
 
 ### tmpfs / ramdisk
