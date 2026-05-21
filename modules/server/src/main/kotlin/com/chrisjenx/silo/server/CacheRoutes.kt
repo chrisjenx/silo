@@ -20,13 +20,16 @@ import com.chrisjenx.silo.protocol.ContentTypes
 import com.chrisjenx.silo.storage.CacheStore
 import com.chrisjenx.silo.storage.PutOutcome
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.contentLength
 import io.ktor.server.request.receiveChannel
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import io.ktor.server.routing.head
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import io.ktor.utils.io.jvm.javaio.toInputStream
@@ -43,53 +46,54 @@ import kotlinx.io.readByteArray
  */
 fun Route.cacheRoutes(store: CacheStore) {
     route("/cache/{key}") {
-        get {
-            val raw = call.parameters["key"].orEmpty()
-            val key = CacheKey.parse(raw)
-            if (key == null) {
-                call.respond(HttpStatusCode.BadRequest)
-                return@get
-            }
-            val handle = store.get(key)
-            if (handle == null) {
-                call.respond(HttpStatusCode.NotFound)
-                return@get
-            }
-            try {
-                val size = handle.sizeBytes
-                val source = handle.body.buffered()
-                val bodyBytes = source.readByteArray(size.toInt())
-                call.respondBytes(
-                    bytes = bodyBytes,
-                    contentType = ContentType.parse(ContentTypes.CACHE_BODY),
-                    status = HttpStatusCode.OK,
-                )
-            } finally {
-                handle.close()
-            }
-        }
-
-        put {
-            val raw = call.parameters["key"].orEmpty()
-            val key = CacheKey.parse(raw)
-            if (key == null) {
-                call.respond(HttpStatusCode.BadRequest)
-                return@put
-            }
-            val declaredSize = call.request.contentLength()
-            if (declaredSize == null || declaredSize < 0) {
-                call.respond(HttpStatusCode.LengthRequired)
-                return@put
-            }
-            val channel = call.receiveChannel()
-            val source = channel.toInputStream().asSource().buffered()
-            val outcome = store.put(key, declaredSize, source)
-            when (outcome) {
-                is PutOutcome.Stored, is PutOutcome.AlreadyPresent ->
-                    call.respond(HttpStatusCode.OK)
-                is PutOutcome.RejectedTooLarge ->
-                    call.respond(HttpStatusCode.PayloadTooLarge)
-            }
-        }
+        get { call.handleGet(store) }
+        head { call.handleHead(store) }
+        put { call.handlePut(store) }
     }
 }
+
+private suspend fun ApplicationCall.handleGet(store: CacheStore) {
+    val key = parsedKey() ?: return respond(HttpStatusCode.BadRequest)
+    val handle = store.get(key) ?: return respond(HttpStatusCode.NotFound)
+    try {
+        val size = handle.sizeBytes
+        val source = handle.body.buffered()
+        val bodyBytes = source.readByteArray(size.toInt())
+        respondBytes(
+            bytes = bodyBytes,
+            contentType = ContentType.parse(ContentTypes.CACHE_BODY),
+            status = HttpStatusCode.OK,
+        )
+    } finally {
+        handle.close()
+    }
+}
+
+private suspend fun ApplicationCall.handleHead(store: CacheStore) {
+    val key = parsedKey() ?: return respond(HttpStatusCode.BadRequest)
+    val handle = store.get(key) ?: return respond(HttpStatusCode.NotFound)
+    try {
+        response.headers.append(HttpHeaders.ContentLength, handle.sizeBytes.toString())
+        response.headers.append(HttpHeaders.ContentType, ContentTypes.CACHE_BODY)
+        respond(HttpStatusCode.OK)
+    } finally {
+        handle.close()
+    }
+}
+
+private suspend fun ApplicationCall.handlePut(store: CacheStore) {
+    val key = parsedKey() ?: return respond(HttpStatusCode.BadRequest)
+    val declaredSize = request.contentLength()
+    if (declaredSize == null || declaredSize < 0) {
+        return respond(HttpStatusCode.LengthRequired)
+    }
+    val source = receiveChannel().toInputStream().asSource().buffered()
+    when (store.put(key, declaredSize, source)) {
+        is PutOutcome.Stored, is PutOutcome.AlreadyPresent ->
+            respond(HttpStatusCode.OK)
+        is PutOutcome.RejectedTooLarge ->
+            respond(HttpStatusCode.PayloadTooLarge)
+    }
+}
+
+private fun ApplicationCall.parsedKey(): CacheKey? = CacheKey.parse(parameters["key"].orEmpty())
