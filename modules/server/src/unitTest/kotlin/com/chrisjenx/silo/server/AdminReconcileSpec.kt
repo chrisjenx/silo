@@ -15,61 +15,59 @@
  */
 package com.chrisjenx.silo.server
 
+import at.favre.lib.crypto.bcrypt.BCrypt
 import com.chrisjenx.silo.metadata.sqlite.SqliteMetadataIndex
-import com.chrisjenx.silo.protocol.CacheKey
-import com.chrisjenx.silo.protocol.ContentTypes
+import com.chrisjenx.silo.server.auth.AuthSettings
+import com.chrisjenx.silo.server.auth.PasswordVerifier
+import com.chrisjenx.silo.server.auth.Role
+import com.chrisjenx.silo.server.auth.User
+import com.chrisjenx.silo.server.auth.UserStore
 import com.chrisjenx.silo.storage.fs.FileSystemCacheStore
-import com.chrisjenx.silo.testing.TestKeys
+import com.chrisjenx.silo.storage.fs.ReconciliationEngine
 import com.chrisjenx.silo.testing.TmpCacheRoot
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
-import io.ktor.client.request.head
-import io.ktor.client.statement.bodyAsBytes
+import io.kotest.matchers.string.shouldContain
+import io.ktor.client.request.headers
+import io.ktor.client.request.post
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
-import kotlinx.io.Buffer
-import kotlinx.io.write
+import io.ktor.util.encodeBase64
 import java.nio.file.Path
 
-class CacheHeadSpec : StringSpec({
+private const val WRITER_USER = "writer"
+private const val WRITER_PW = "letmein"
 
-    "HEAD on a hit returns 200 with Content-Length and Content-Type, empty body" {
-        TmpCacheRoot.create("silo-head-hit-").use { root ->
+class AdminReconcileSpec : StringSpec({
+
+    "POST /api/storage/reconcile requires WRITE auth and returns the drift summary" {
+        TmpCacheRoot.create("silo-admin-reconcile-").use { root ->
             val services = buildServices(root)
-            val key = CacheKey.requireValid(TestKeys.valid(seed = 1))
-            val payload = ByteArray(2048) { it.toByte() }
-            services.cacheStore.put(key, payload.size.toLong(), Buffer().apply { write(payload) })
-
             testApplication {
                 application { installSiloModule(services) }
-                val response = client.head("/cache/${key.value}")
+                val response =
+                    client.post("/api/storage/reconcile") {
+                        val token = "$WRITER_USER:$WRITER_PW".toByteArray(Charsets.UTF_8).encodeBase64()
+                        headers { append(HttpHeaders.Authorization, "Basic $token") }
+                    }
                 response.status shouldBe HttpStatusCode.OK
-                response.headers[HttpHeaders.ContentLength] shouldBe payload.size.toString()
-                response.headers[HttpHeaders.ContentType] shouldBe ContentTypes.CACHE_BODY
-                response.bodyAsBytes().size shouldBe 0
+                val body = response.bodyAsText()
+                body shouldContain "orphanBlobsReindexed"
+                body shouldContain "orphanRowsDeleted"
+                body shouldContain "staleTmpDeleted"
             }
             services.metadataIndex.close()
         }
     }
 
-    "HEAD on a miss returns 404" {
-        TmpCacheRoot.create("silo-head-miss-").use { root ->
+    "POST /api/storage/reconcile without credentials returns 401" {
+        TmpCacheRoot.create("silo-admin-reconcile-401-").use { root ->
             val services = buildServices(root)
             testApplication {
                 application { installSiloModule(services) }
-                client.head("/cache/${TestKeys.valid(seed = 999)}").status shouldBe HttpStatusCode.NotFound
-            }
-            services.metadataIndex.close()
-        }
-    }
-
-    "HEAD with a malformed key returns 400" {
-        TmpCacheRoot.create("silo-head-bad-").use { root ->
-            val services = buildServices(root)
-            testApplication {
-                application { installSiloModule(services) }
-                client.head("/cache/not-hex").status shouldBe HttpStatusCode.BadRequest
+                client.post("/api/storage/reconcile").status shouldBe HttpStatusCode.Unauthorized
             }
             services.metadataIndex.close()
         }
@@ -82,23 +80,25 @@ private fun buildServices(root: Path): SiloServices {
             port = 0,
             host = "127.0.0.1",
             storageRoot = root,
-            maxEntryBytes = 64L * 1024 * 1024,
+            maxEntryBytes = 4L * 1024 * 1024,
             allowUnsupportedFs = false,
         )
     val metadataIndex = SqliteMetadataIndex.open(root.resolve("silo.db"))
     val cacheStore = FileSystemCacheStore(root = root, fsyncDirOnRename = false)
+    val hash = BCrypt.withDefaults().hashToString(4, WRITER_PW.toCharArray())
+    val users = UserStore(listOf(User(WRITER_USER, hash, setOf(Role.WRITE, Role.READ))))
     return SiloServices(
         config = config,
         cacheStore = cacheStore,
         metadataIndex = metadataIndex,
         readinessProbe = ReadinessProbe(root, metadataIndex),
         storageRootLock = null,
-        reconciliationEngine = com.chrisjenx.silo.storage.fs.ReconciliationEngine(root = root, index = metadataIndex),
         auth =
-            com.chrisjenx.silo.server.auth.AuthSettings(
+            AuthSettings(
                 anonymousRead = true,
-                users = com.chrisjenx.silo.server.auth.UserStore(emptyList()),
-                verifier = com.chrisjenx.silo.server.auth.PasswordVerifier(),
+                users = users,
+                verifier = PasswordVerifier(),
             ),
+        reconciliationEngine = ReconciliationEngine(root = root, index = metadataIndex),
     )
 }

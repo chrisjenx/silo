@@ -22,6 +22,7 @@ import com.chrisjenx.silo.server.auth.UserStore
 import com.chrisjenx.silo.server.auth.installSiloAuth
 import com.chrisjenx.silo.storage.fs.FileSystemCacheStore
 import com.chrisjenx.silo.storage.fs.FilesystemSupport
+import com.chrisjenx.silo.storage.fs.ReconciliationEngine
 import com.chrisjenx.silo.storage.fs.StorageRootLock
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
@@ -71,6 +72,7 @@ fun Application.module() {
             maxEntryBytes = config.maxEntryBytes,
         )
     val readinessProbe = ReadinessProbe(config.storageRoot, metadataIndex)
+    val reconciliationEngine = ReconciliationEngine(root = config.storageRoot, index = metadataIndex)
     val users = config.usersConfPath?.let { UserStore.loadFromFile(it) } ?: UserStore(emptyList())
     val auth =
         AuthSettings(
@@ -86,6 +88,7 @@ fun Application.module() {
             readinessProbe = readinessProbe,
             storageRootLock = lock,
             auth = auth,
+            reconciliationEngine = reconciliationEngine,
         ),
     )
 }
@@ -125,6 +128,7 @@ fun Application.installSiloModule(services: SiloServices) {
             }
         }
         cacheRoutes(services.cacheStore, services.auth)
+        adminRoutes(services.reconciliationEngine)
     }
 }
 

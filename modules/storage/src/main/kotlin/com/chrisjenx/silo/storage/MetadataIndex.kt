@@ -76,6 +76,17 @@ interface MetadataIndex : AutoCloseable {
         limit: Int,
     ): List<EntryRecord>
 
+    /**
+     * Pages through committed keys in ascending key order. Pass `null` for
+     * [after] on the first call; pass the last key of the previous page on
+     * each subsequent call until an empty list comes back. Used by the
+     * reconciliation sweep to detect orphan rows.
+     */
+    suspend fun pageKeysAfter(
+        after: String?,
+        limit: Int,
+    ): List<CacheKey>
+
     /** Explicitly flush any buffered access-time updates. */
     suspend fun flush()
 
