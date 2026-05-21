@@ -21,7 +21,6 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 ktlint {
-    version.set("1.3.1")
     android.set(false)
     ignoreFailures.set(false)
     enableExperimentalRules.set(false)
