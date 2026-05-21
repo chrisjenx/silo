@@ -114,10 +114,16 @@ class StorageRootLock private constructor(
             lockPath: Path,
         ): StorageRootLock {
             val pid = ProcessHandle.current().pid()
-            channel.truncate(0)
-            channel.position(0)
-            channel.write(ByteBuffer.wrap(pid.toString().toByteArray(StandardCharsets.US_ASCII)))
-            channel.force(true)
+            try {
+                channel.truncate(0)
+                channel.position(0)
+                channel.write(ByteBuffer.wrap(pid.toString().toByteArray(StandardCharsets.US_ASCII)))
+                channel.force(true)
+            } catch (e: IOException) {
+                runCatching { lock.release() }
+                runCatching { channel.close() }
+                throw e
+            }
             return StorageRootLock(channel, lock, lockPath, pid)
         }
 
