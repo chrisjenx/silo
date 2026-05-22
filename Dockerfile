@@ -4,10 +4,12 @@
 FROM gradle:9.5-jdk21-alpine AS build
 WORKDIR /src
 
-# Warm dependency cache layer
+# Warm dependency cache layer. Copy only the wrapper + build scripts so
+# this layer is cached unless the build definition itself changes.
+COPY gradlew gradlew.bat ./
 COPY gradle gradle
-COPY settings.gradle.kts build.gradle.kts gradle.properties* ./
-COPY buildSrc buildSrc 2>/dev/null || true
+COPY buildSrc buildSrc
+COPY settings.gradle.kts build.gradle.kts gradle.properties ./
 RUN --mount=type=cache,target=/home/gradle/.gradle ./gradlew --no-daemon dependencies || true
 
 # Copy sources and build
@@ -19,11 +21,21 @@ RUN cp modules/server/build/libs/silo-*-all.jar /tmp/silo.jar
 # --- Stage 2: runtime ---
 FROM eclipse-temurin:21-jre-alpine AS runtime
 
-LABEL org.opencontainers.image.title="Silo"
-LABEL org.opencontainers.image.description="OSS Kotlin/Ktor replacement for the Gradle Remote Build Cache Node."
-LABEL org.opencontainers.image.licenses="Apache-2.0"
-LABEL org.opencontainers.image.source="https://github.com/chrisjenx/silo"
-LABEL org.opencontainers.image.documentation="https://github.com/chrisjenx/silo#readme"
+# OCI labels populated from build args so a plain
+# `docker buildx build --build-arg VERSION=… .` carries provenance.
+# CI overrides these via docker/metadata-action at push time.
+ARG VERSION=dev
+ARG VCS_REF=unknown
+ARG BUILD_DATE
+
+LABEL org.opencontainers.image.title="Silo" \
+      org.opencontainers.image.description="OSS Kotlin/Ktor replacement for the Gradle Remote Build Cache Node." \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.source="https://github.com/chrisjenx/silo" \
+      org.opencontainers.image.documentation="https://github.com/chrisjenx/silo#readme" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.created="${BUILD_DATE}"
 
 RUN apk add --no-cache wget tini \
  && addgroup -S silo \
