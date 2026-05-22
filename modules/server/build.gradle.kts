@@ -1,20 +1,28 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 plugins {
-    application
     id("silo.ktor-conventions")
     id("silo.testing-conventions")
     alias(libs.plugins.shadow)
-}
-
-application {
-    // Shadow reads this to write the fat-jar Main-Class manifest entry.
-    // Main.kt is annotated @file:JvmName("Main").
-    mainClass.set("com.chrisjenx.silo.server.Main")
 }
 
 base {
     // Artifacts are silo-<version>(-all).jar, not server-*. The Dockerfile
     // and release.yml glob for silo-*-all.jar.
     archivesName.set("silo")
+}
+
+tasks.named<ShadowJar>("shadowJar") {
+    // Set Main-Class directly rather than via the `application` plugin:
+    // Shadow 8.3.x + application wires startShadowScripts against the
+    // removed `mainClassName` property and breaks `assemble` on Gradle 9.
+    // Main.kt is annotated @file:JvmName("Main").
+    manifest {
+        attributes["Main-Class"] = "com.chrisjenx.silo.server.Main"
+    }
+    // Merge META-INF/services so ServiceLoader (BackendFactory), Netty,
+    // and SLF4J provider descriptors survive the fat-jar shading.
+    mergeServiceFiles()
 }
 
 dependencies {
