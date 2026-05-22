@@ -3,6 +3,10 @@ import http from 'k6/http';
 import { check } from 'k6';
 import { silo, key, authHeader, bytes } from './lib.js';
 
+// A 404 is a cache miss, not an error in the Gradle build-cache protocol —
+// don't let it inflate http_req_failed. Real errors (401/5xx) still count.
+http.setResponseCallback(http.expectedStatuses({ min: 200, max: 204 }, 404));
+
 const HOT_SIZE = 1000;
 const PAYLOAD = bytes(1024 * 1024).buffer; // 1 MiB
 
