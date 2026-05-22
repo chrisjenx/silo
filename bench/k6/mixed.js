@@ -9,6 +9,8 @@ const PAYLOAD = bytes(1024 * 1024).buffer; // 1 MiB
 export const options = {
     vus: 100,
     duration: __ENV.DURATION || '5m',
+    // Emit p50/p95/p99 into --summary-export so :bench:compareBaseline can read them.
+    summaryTrendStats: ['avg', 'med', 'p(95)', 'p(99)', 'max'],
     thresholds: {
         http_req_failed: ['rate<0.01'],
         http_req_duration: ['p(99)<150'],
