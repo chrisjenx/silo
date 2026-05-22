@@ -97,6 +97,73 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  smoke:
+    name: k6 smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Build fat jar
+        run: ./gradlew --no-daemon --stacktrace :server:shadowJar -x test
+
+      - name: Install k6
+        run: |
+          set -euo pipefail
+          K6_VERSION=v0.52.0
+          curl -fsSL "https://github.com/grafana/k6/releases/download/${K6_VERSION}/k6-${K6_VERSION}-linux-amd64.tar.gz" \
+            | tar -xz
+          sudo install "k6-${K6_VERSION}-linux-amd64/k6" /usr/local/bin/k6
+          k6 version
+
+      - name: Boot silo and run k6 smoke
+        run: |
+          set -euo pipefail
+          # tmpfs data root so the smoke never touches the runner's disk.
+          DATA="$(mktemp -d -p /dev/shm)"
+          # A throwaway WRITE user for the smoke's PUTs (PUT always needs WRITE).
+          # bcrypt hash of "silo-ci-secret"; this is an ephemeral CI credential.
+          cat > ci-users.conf <<'USERS'
+          silo {
+            users = [
+              {
+                username = "ci"
+                password-hash = "$2a$10$y3XGw7R720reVhD91l/yYuJbMcIBd4NsFhYPErAUy91jC3P14Si3W"
+                roles = ["read", "write"]
+              }
+            ]
+          }
+          USERS
+          JAR="$(ls modules/server/build/libs/silo-*-all.jar | head -1)"
+          SILO_PORT=8080 SILO_STORAGE_ROOT="$DATA" \
+            java -Dsilo.auth.users-file="$PWD/ci-users.conf" -jar "$JAR" &
+          SILO_PID=$!
+          trap 'kill "$SILO_PID" 2>/dev/null || true' EXIT
+
+          # Wait for readiness (up to ~30s).
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8080/health
+
+          k6 run \
+            -e BASE_URL=http://127.0.0.1:8080 \
+            -e AUTH='ci:silo-ci-secret' \
+            bench/k6/smoke.js
+
   markdown:
     name: docs lint
     runs-on: ubuntu-latest
