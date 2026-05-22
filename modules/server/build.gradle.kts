@@ -1,6 +1,20 @@
 plugins {
+    application
     id("silo.ktor-conventions")
     id("silo.testing-conventions")
+    alias(libs.plugins.shadow)
+}
+
+application {
+    // Shadow reads this to write the fat-jar Main-Class manifest entry.
+    // Main.kt is annotated @file:JvmName("Main").
+    mainClass.set("com.chrisjenx.silo.server.Main")
+}
+
+base {
+    // Artifacts are silo-<version>(-all).jar, not server-*. The Dockerfile
+    // and release.yml glob for silo-*-all.jar.
+    archivesName.set("silo")
 }
 
 dependencies {

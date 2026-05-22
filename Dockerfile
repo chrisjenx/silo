@@ -4,15 +4,11 @@
 FROM gradle:9.5-jdk21-alpine AS build
 WORKDIR /src
 
-# Warm dependency cache layer. Copy only the wrapper + build scripts so
-# this layer is cached unless the build definition itself changes.
-COPY gradlew gradlew.bat ./
-COPY gradle gradle
-COPY buildSrc buildSrc
-COPY settings.gradle.kts build.gradle.kts gradle.properties ./
-RUN --mount=type=cache,target=/home/gradle/.gradle ./gradlew --no-daemon dependencies || true
-
-# Copy sources and build
+# Copy the whole project and build the fat jar. A "copy build scripts
+# first" warm layer can't work for this multi-module build: the root
+# settings.gradle.kts eagerly resolves every modules/* projectDir, so it
+# fails unless all module dirs are present. The buildx cache mount keeps
+# the Gradle dependency cache warm across builds instead.
 COPY . .
 RUN --mount=type=cache,target=/home/gradle/.gradle \
     ./gradlew --no-daemon :server:shadowJar -x test
