@@ -1,0 +1,28 @@
+# Build outputs — rebuilt inside the image, must not leak from the host
+# (host artifacts may be the wrong arch and would shadow the clean build).
+**/build/
+**/.gradle/
+.gradle/
+.kotlin/
+dist/
+bench/results/
+
+# VCS & CI
+.git/
+.gitignore
+.github/
+
+# Tooling / editor / agent
+.idea/
+*.iml
+.vscode/
+.claude/
+.DS_Store
+
+# Docs and local notes (not needed for the jar)
+docs/
+*.md
+!README.md
+
+# Logs
+**/*.log
