@@ -28,6 +28,7 @@ include(
     ":metrics",
     ":server",
     ":test-fixtures",
+    ":bench",
 )
 
 project(":protocol").projectDir = file("modules/protocol")
@@ -37,3 +38,4 @@ project(":metadata-sqlite").projectDir = file("modules/metadata-sqlite")
 project(":metrics").projectDir = file("modules/metrics")
 project(":server").projectDir = file("modules/server")
 project(":test-fixtures").projectDir = file("modules/test-fixtures")
+project(":bench").projectDir = file("modules/bench")

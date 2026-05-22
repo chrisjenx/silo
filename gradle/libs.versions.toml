@@ -18,6 +18,7 @@ kover = "0.9.1"
 ktlint = "12.1.2"
 detekt = "1.23.7"
 mockk = "1.13.13"
+kotlinx-benchmark = "0.4.13"
 
 [libraries]
 # Kotlin
@@ -57,6 +58,9 @@ bcrypt = { module = "at.favre.lib:bcrypt", version.ref = "bcrypt" }
 # Config
 typesafe-config = { module = "com.typesafe:config", version.ref = "typesafe-config" }
 
+# Benchmark
+kotlinx-benchmark-runtime = { module = "org.jetbrains.kotlinx:kotlinx-benchmark-runtime", version.ref = "kotlinx-benchmark" }
+
 # Test
 kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
 kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
@@ -71,3 +75,5 @@ shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
+kotlinx-benchmark = { id = "org.jetbrains.kotlinx.benchmark", version.ref = "kotlinx-benchmark" }
