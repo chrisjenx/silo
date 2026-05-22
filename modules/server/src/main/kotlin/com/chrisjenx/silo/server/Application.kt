@@ -130,7 +130,11 @@ fun Application.installSiloModule(services: SiloServices) {
 
     routing {
         get("/health") {
-            call.respondText("ok", status = HttpStatusCode.OK)
+            call.respondText(
+                """{"status":"ok","version":"${SiloVersion.version}","commit":"${SiloVersion.commit}"}""",
+                contentType = io.ktor.http.ContentType.Application.Json,
+                status = HttpStatusCode.OK,
+            )
         }
         get("/ready") {
             if (services.readinessProbe.isReady()) {

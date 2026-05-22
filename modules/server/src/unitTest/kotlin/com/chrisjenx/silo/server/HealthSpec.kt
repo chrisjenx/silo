@@ -20,6 +20,7 @@ import com.chrisjenx.silo.storage.fs.FileSystemCacheStore
 import com.chrisjenx.silo.testing.TmpCacheRoot
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
@@ -30,14 +31,16 @@ class HealthSpec : BehaviorSpec({
 
     given("an installed Silo module") {
         `when`("/health is requested") {
-            then("it returns 200 ok") {
+            then("it returns 200 with status ok and the version") {
                 TmpCacheRoot.create("silo-server-health-").use { root ->
                     val services = buildServices(root)
                     testApplication {
                         application { installSiloModule(services) }
                         val response = client.get("/health")
                         response.status shouldBe HttpStatusCode.OK
-                        response.bodyAsText() shouldBe "ok"
+                        val body = response.bodyAsText()
+                        body shouldContain "\"status\":\"ok\""
+                        body shouldContain "\"version\":\"${SiloVersion.version}\""
                     }
                     services.metadataIndex.close()
                 }

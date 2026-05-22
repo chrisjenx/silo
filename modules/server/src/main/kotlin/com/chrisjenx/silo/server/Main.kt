@@ -24,8 +24,14 @@ import io.ktor.server.netty.Netty
  * Ktor entry point. Run with `./gradlew :server:run` or `java -jar silo.jar`.
  * Reads `application.conf` from the classpath, then starts Netty on the
  * configured `silo.server.{host,port}`.
+ *
+ * `--version` / `-V` prints `silo <version> (<sha>) jvm <javaVersion>` and exits.
  */
-fun main() {
+fun main(args: Array<String>) {
+    if (args.any { it == "--version" || it == "-V" }) {
+        println(SiloVersion.line())
+        return
+    }
     val config = SiloConfig.load(com.typesafe.config.ConfigFactory.load())
     embeddedServer(
         factory = Netty,
