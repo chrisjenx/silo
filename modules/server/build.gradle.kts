@@ -13,6 +13,18 @@ base {
     archivesName.set("silo")
 }
 
+// Short commit SHA embedded in the jar manifest. CI passes -Psilo.commit;
+// locally we shell out to git; if neither is available, "unknown".
+val commitSha: String =
+    (project.findProperty("silo.commit") as String?)?.takeIf { it.isNotBlank() }
+        ?: runCatching {
+            providers.exec {
+                commandLine("git", "rev-parse", "--short", "HEAD")
+                isIgnoreExitValue = true
+            }.standardOutput.asText.get().trim()
+        }.getOrNull()?.takeIf { it.isNotEmpty() }
+        ?: "unknown"
+
 tasks.named<ShadowJar>("shadowJar") {
     // Set Main-Class directly rather than via the `application` plugin:
     // Shadow 8.3.x + application wires startShadowScripts against the
@@ -20,6 +32,9 @@ tasks.named<ShadowJar>("shadowJar") {
     // Main.kt is annotated @file:JvmName("Main").
     manifest {
         attributes["Main-Class"] = "com.chrisjenx.silo.server.Main"
+        attributes["Implementation-Title"] = "silo"
+        attributes["Implementation-Version"] = project.version.toString()
+        attributes["Implementation-SHA"] = commitSha
     }
     // Merge META-INF/services so ServiceLoader (BackendFactory), Netty,
     // and SLF4J provider descriptors survive the fat-jar shading.

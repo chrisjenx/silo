@@ -16,19 +16,34 @@
 package com.chrisjenx.silo.server
 
 /**
- * Resolved at build time from the Gradle property `silo.version` (and at
- * runtime falls back to "dev" when running outside a packaged build).
- *
- * The commit SHA is read from the optional `SILO_COMMIT` environment
- * variable that the release workflow injects.
+ * Version metadata embedded in the fat-jar manifest at build time
+ * (`Implementation-Version` and `Implementation-SHA`). Falls back to a
+ * system property or the `SILO_COMMIT` env var, then "dev" / "unknown"
+ * when running outside a packaged build (tests, `:run`).
  */
 object SiloVersion {
+    private val manifestAttributes: java.util.jar.Attributes? by lazy {
+        runCatching {
+            val location =
+                SiloVersion::class.java.protectionDomain?.codeSource?.location
+                    ?: return@runCatching null
+            java.util.jar.JarInputStream(location.openStream()).use { it.manifest?.mainAttributes }
+        }.getOrNull()
+    }
+
     val version: String =
         SiloVersion::class.java.`package`?.implementationVersion
+            ?: manifestAttributes?.getValue("Implementation-Version")
             ?: System.getProperty("silo.version")
             ?: "dev"
 
-    val commit: String = System.getenv("SILO_COMMIT") ?: "unknown"
+    val commit: String =
+        manifestAttributes?.getValue("Implementation-SHA")
+            ?: System.getenv("SILO_COMMIT")
+            ?: "unknown"
+
+    /** One-line `--version` output: `silo <version> (<sha>) jvm <javaVersion>`. */
+    fun line(): String = "silo $version ($commit) jvm ${System.getProperty("java.version")}"
 
     fun banner(): String =
         """
