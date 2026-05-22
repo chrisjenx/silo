@@ -21,7 +21,7 @@ export default function () {
     const auth = authHeader();
     if (auth) headers['Authorization'] = auth;
 
-    const k = key(2_000_000 + __ITER);
+    const k = key(2000000 + __ITER);
     const res = http.put(`${silo.baseUrl}/cache/${k}`, PAYLOAD, { headers });
     check(res, { 'PUT 200': (r) => r.status === 200 });
 }

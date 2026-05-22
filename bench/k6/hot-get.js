@@ -9,7 +9,7 @@ const PAYLOAD_SIZE = 1024 * 1024; // 1 MiB
 
 export const options = {
     vus: 200,
-    iterations: 10_000,
+    iterations: 10000,
     thresholds: {
         http_req_failed: ['rate<0.001'],
         http_req_duration: ['p(99)<50'],

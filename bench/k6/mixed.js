@@ -3,7 +3,7 @@ import http from 'k6/http';
 import { check } from 'k6';
 import { silo, key, authHeader, bytes } from './lib.js';
 
-const HOT_SIZE = 1_000;
+const HOT_SIZE = 1000;
 const PAYLOAD = bytes(1024 * 1024).buffer; // 1 MiB
 
 export const options = {
@@ -11,9 +11,11 @@ export const options = {
     duration: __ENV.DURATION || '5m',
     // Emit p50/p95/p99 into --summary-export so :bench:compareBaseline can read them.
     summaryTrendStats: ['avg', 'med', 'p(95)', 'p(99)', 'max'],
+    // Only real failures (auth/5xx) hard-fail the run. Absolute latency is
+    // environment-dependent on shared CI runners, so the regression gate
+    // (:bench:compareBaseline vs the baseline) owns latency, not a fixed number.
     thresholds: {
         http_req_failed: ['rate<0.01'],
-        http_req_duration: ['p(99)<150'],
     },
 };
 
@@ -23,7 +25,7 @@ export default function () {
     if (auth) headers['Authorization'] = auth;
 
     const hot = Math.random() < 0.9;
-    const k = key(hot ? Math.floor(Math.random() * HOT_SIZE) : Math.floor(Math.random() * 1_000_000));
+    const k = key(hot ? Math.floor(Math.random() * HOT_SIZE) : Math.floor(Math.random() * 1000000));
 
     if (Math.random() < 0.7) {
         const res = http.get(`${silo.baseUrl}/cache/${k}`);
