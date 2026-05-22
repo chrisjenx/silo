@@ -4,6 +4,7 @@ plugins {
     id("silo.ktor-conventions")
     id("silo.testing-conventions")
     alias(libs.plugins.shadow)
+    alias(libs.plugins.cyclonedx)
 }
 
 base {

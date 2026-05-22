@@ -19,6 +19,7 @@ ktlint = "12.1.2"
 detekt = "1.23.7"
 mockk = "1.13.13"
 kotlinx-benchmark = "0.4.13"
+cyclonedx = "2.3.1"
 
 [libraries]
 # Kotlin
@@ -77,3 +78,4 @@ ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
 kotlinx-benchmark = { id = "org.jetbrains.kotlinx.benchmark", version.ref = "kotlinx-benchmark" }
+cyclonedx = { id = "org.cyclonedx.bom", version.ref = "cyclonedx" }
