@@ -36,12 +36,12 @@
       "pinDigests": true
     },
     {
-      "matchPackagePatterns": ["^io.ktor:"],
+      "matchPackageNames": ["/^io\\.ktor:/"],
       "groupName": "ktor",
       "labels": ["type/chore", "area/build", "priority/p1"]
     },
     {
-      "matchPackagePatterns": ["^org.jetbrains.kotlin"],
+      "matchPackageNames": ["/^org\\.jetbrains\\.kotlin/"],
       "groupName": "kotlin"
     }
   ],
