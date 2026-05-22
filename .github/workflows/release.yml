@@ -29,8 +29,8 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Build fat jar + web export
-        run: ./gradlew --no-daemon :server:shadowJar :web:kobwebExport
+      - name: Build fat jar
+        run: ./gradlew --no-daemon :server:shadowJar
 
       - name: Generate SBOM (CycloneDX)
         run: ./gradlew --no-daemon :server:cyclonedxBom
