@@ -74,6 +74,8 @@ your nginx worker disk hard.
 
 ## Traefik
 
+### Docker provider (labels)
+
 ```yaml
 # docker-compose.yml fragment
 services:
@@ -85,16 +87,148 @@ services:
       - traefik.http.routers.silo.entrypoints=websecure
       - traefik.http.routers.silo.tls.certresolver=le
       - traefik.http.services.silo.loadbalancer.server.port=8080
-      - traefik.http.middlewares.silo-buffer.buffering.maxRequestBodyBytes=5368709120
-      - traefik.http.routers.silo.middlewares=silo-buffer
+      # IMPORTANT: do NOT enable the buffering middleware for the whole
+      # router — it spools the entire body before forwarding and defeats
+      # Silo's streaming. Cap size at Silo instead (it 413s via Expect:
+      # 100-continue). Only buffer if you must hard-limit at the edge:
+      - traefik.http.middlewares.silo-limit.buffering.maxRequestBodyBytes=5368709120
+      - traefik.http.middlewares.silo-limit.buffering.memRequestBodyBytes=1048576
+      - traefik.http.routers.silo.middlewares=silo-limit
 ```
+
+### Full static + dynamic config (file provider)
+
+```yaml
+# traefik.yml — static config
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint: { to: websecure, scheme: https }
+  websecure:
+    address: ":443"
+    transport:
+      respondingTimeouts:
+        readTimeout: "120s"     # allow slow, large PUTs
+        idleTimeout: "180s"
+certificatesResolvers:
+  le:
+    acme:
+      email: ops@example.com
+      storage: /acme/acme.json
+      tlsChallenge: {}
+providers:
+  file:
+    filename: /etc/traefik/dynamic.yml
+```
+
+```yaml
+# dynamic.yml — routers/services
+http:
+  routers:
+    silo:
+      rule: "Host(`silo.example.com`)"
+      entryPoints: [websecure]
+      service: silo
+      tls:
+        certResolver: le
+  services:
+    silo:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://silo:8080"
+        healthCheck:
+          path: /health
+          interval: "30s"
+          timeout: "3s"
+```
+
+Traefik streams request and response bodies by default (no `proxy_buffering`
+equivalent to disable), so large GET/PUT pass straight through unless you
+attach the `buffering` middleware above.
 
 ## AWS ALB
 
-- Set `idle_timeout = 120s` (default 60s can break large PUTs on slow links).
-- Target group health check: HTTP `GET /health`.
-- Listener: HTTPS:443 with an ACM certificate.
-- Stickiness is **not** required — every request is content-addressed and self-routing.
+Application Load Balancer terminates TLS with an ACM certificate and forwards
+plain HTTP to the Silo target group.
+
+- **Listener**: HTTPS:443, ACM cert, forward to the target group. Add an
+  HTTP:80 listener that 301-redirects to HTTPS.
+- **Target group**: protocol HTTP, port 8080, health check `GET /health`
+  (200 expected), `deregistration_delay = 30s`.
+- **`idle_timeout = 120s`** on the LB — the 60s default can sever large PUTs
+  on slow links.
+- ALB does **not** cap request body size, so Silo's `max-entry-bytes` (→ 413)
+  is the size guard. ALB also doesn't honour `Expect: 100-continue` end-to-end,
+  so oversized PUTs upload fully before Silo rejects them — keep the cap sane.
+- Stickiness is **not** required — every request is content-addressed and
+  self-routing across targets.
+
+```hcl
+# Terraform sketch
+resource "aws_lb_target_group" "silo" {
+  port     = 8080
+  protocol = "HTTP"
+  vpc_id   = var.vpc_id
+  health_check {
+    path                = "/health"
+    matcher             = "200"
+    interval            = 30
+    timeout             = 3
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+  }
+  deregistration_delay = 30
+}
+
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.silo.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.acm_certificate_arn
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.silo.arn
+  }
+}
+```
+
+## Cloudflare Tunnel
+
+`cloudflared` dials out from inside your network, so Silo needs **no inbound
+ports** and no public IP. TLS terminates at the Cloudflare edge.
+
+```yaml
+# config.yml for cloudflared
+tunnel: <TUNNEL-UUID>
+credentials-file: /etc/cloudflared/<TUNNEL-UUID>.json
+ingress:
+  - hostname: silo.example.com
+    service: http://silo:8080
+    originRequest:
+      connectTimeout: 30s
+      # No response buffering — stream cache hits straight back.
+      noHappyEyeballs: false
+  - service: http_status:404
+```
+
+```bash
+cloudflared tunnel route dns <TUNNEL-UUID> silo.example.com
+cloudflared tunnel run <TUNNEL-UUID>
+```
+
+Caveats:
+
+- The **free plan caps request bodies at 100 MB**. Large build-cache artifacts
+  will fail with `413` from Cloudflare before reaching Silo — use a paid plan or
+  a different proxy for big artifacts.
+- Cloudflare may buffer/transform; disable **Caching** and any **compression**
+  for the Silo hostname so opaque cache bytes pass through untouched.
+- Authenticate at Silo (HTTP Basic) and/or with Cloudflare Access in front —
+  Silo never trusts `X-Forwarded-*` for auth.
 
 ## Inline TLS (opt-in)
 
