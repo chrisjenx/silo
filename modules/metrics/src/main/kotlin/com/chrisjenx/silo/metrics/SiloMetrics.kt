@@ -20,6 +20,7 @@ import com.chrisjenx.silo.storage.EvictionReason
 import com.chrisjenx.silo.storage.fs.DriftKind
 import com.chrisjenx.silo.storage.fs.FileSystemCacheStore
 import com.chrisjenx.silo.storage.fs.ReconciliationEngine
+import io.micrometer.core.instrument.FunctionCounter
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Tags
 import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics
@@ -43,15 +44,18 @@ fun MeterRegistry.bindSilo(
     JvmThreadMetrics().bindTo(this)
     ProcessorMetrics().bindTo(this)
 
-    gauge("silo_storage_cross_fs_rename_total", Tags.empty(), cacheStore) { it.crossFsRenameCount.toDouble() }
-    gauge("silo_drift_detected_total", Tags.of("kind", "missing_blob"), cacheStore) {
+    // Monotonic lifetime counts → Prometheus counters. Micrometer appends the
+    // `_total` suffix, so the base names are given without it (e.g.
+    // `silo_drift_detected` is scraped as `silo_drift_detected_total`).
+    counter("silo_storage_cross_fs_rename", Tags.empty(), cacheStore) { it.crossFsRenameCount.toDouble() }
+    counter("silo_drift_detected", Tags.of("kind", "missing_blob"), cacheStore) {
         it.enoentDriftCount.toDouble()
     }
 
     evictionEngine?.let { engine ->
         EvictionReason.entries.forEach { reason ->
-            gauge(
-                "silo_store_evictions_total",
+            counter(
+                "silo_store_evictions",
                 Tags.of("reason", reason.name.lowercase()),
                 engine,
             ) { it.evictionsFor(reason).toDouble() }
@@ -60,11 +64,26 @@ fun MeterRegistry.bindSilo(
 
     reconciliationEngine?.let { engine ->
         DriftKind.entries.forEach { kind ->
-            gauge(
-                "silo_drift_detected_total",
+            counter(
+                "silo_drift_detected",
                 Tags.of("kind", kind.name.lowercase()),
                 engine,
             ) { it.driftDetected(kind).toDouble() }
         }
     }
+}
+
+/**
+ * Registers a Prometheus counter backed by a monotonic lifetime count read
+ * lazily from [state]. Mirrors Micrometer's `gauge(name, tags, obj, fn)` shape.
+ */
+private fun <T : Any> MeterRegistry.counter(
+    name: String,
+    tags: Tags,
+    state: T,
+    value: (T) -> Double,
+) {
+    FunctionCounter.builder(name, state) { value(it) }
+        .tags(tags)
+        .register(this)
 }
