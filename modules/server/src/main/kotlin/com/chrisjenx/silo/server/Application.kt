@@ -79,7 +79,6 @@ fun Application.module() {
     val readinessProbe = ReadinessProbe(config.storageRoot, metadataIndex)
     val reconciliationEngine = ReconciliationEngine(root = config.storageRoot, index = metadataIndex)
     val meterRegistry = PrometheusFactory.create(env = "production", instance = "silo")
-    meterRegistry.bindSilo(cacheStore = cacheStore, reconciliationEngine = reconciliationEngine)
     val users = config.usersConfPath?.let { UserStore.loadFromFile(it) } ?: UserStore(emptyList())
     val auth =
         AuthSettings(
@@ -106,11 +105,17 @@ fun Application.module() {
  * tests can hand-build a [SiloServices] (with a tmp root + isolated DB)
  * without going through the production boot path.
  */
-fun Application.installSiloModule(services: SiloServices) {
+private fun Application.installSiloPlugins(services: SiloServices) {
     installSiloAuth(services.auth)
     install(MicrometerMetrics) {
         registry = services.meterRegistry
     }
+    // Bind the silo_* meters (drift, cross-fs renames, JVM) here rather than
+    // in module() so the test harness gets them too.
+    services.meterRegistry.bindSilo(
+        cacheStore = services.cacheStore,
+        reconciliationEngine = services.reconciliationEngine,
+    )
     install(DefaultHeaders) {
         header("Server", "silo/${SiloVersion.version}")
     }
@@ -127,6 +132,10 @@ fun Application.installSiloModule(services: SiloServices) {
         }
         status(HttpStatusCode.NotFound) { call, _ -> respondAdminNotFound(call) }
     }
+}
+
+fun Application.installSiloModule(services: SiloServices) {
+    installSiloPlugins(services)
 
     routing {
         get("/health") {
