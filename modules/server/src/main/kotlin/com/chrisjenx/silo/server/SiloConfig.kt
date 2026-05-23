@@ -31,6 +31,7 @@ data class SiloConfig(
     val allowUnsupportedFs: Boolean,
     val anonymousRead: Boolean = true,
     val usersConfPath: Path? = null,
+    val verifySha256OnRead: Boolean = false,
 ) {
     companion object {
         /** Reads `silo.*` keys from [config], falling back to documented defaults. */
@@ -63,6 +64,11 @@ data class SiloConfig(
                     } else {
                         null
                     },
+                verifySha256OnRead =
+                    config.optBoolean(
+                        "silo.storage.verify-sha256-on-read",
+                        false,
+                    ),
             )
 
         private fun Config.optInt(

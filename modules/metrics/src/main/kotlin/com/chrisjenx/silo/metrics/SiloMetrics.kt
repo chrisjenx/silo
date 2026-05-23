@@ -51,6 +51,7 @@ fun MeterRegistry.bindSilo(
     counter("silo_drift_detected", Tags.of("kind", "missing_blob"), cacheStore) {
         it.enoentDriftCount.toDouble()
     }
+    counter("silo_corruption_detected", Tags.empty(), cacheStore) { it.corruptionDetectedCount.toDouble() }
 
     evictionEngine?.let { engine ->
         EvictionReason.entries.forEach { reason ->
