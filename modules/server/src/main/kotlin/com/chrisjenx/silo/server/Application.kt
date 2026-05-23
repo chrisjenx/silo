@@ -75,6 +75,7 @@ fun Application.module() {
             root = config.storageRoot,
             maxEntryBytes = config.maxEntryBytes,
             metadataIndex = metadataIndex,
+            verifySha256OnRead = config.verifySha256OnRead,
         )
     val readinessProbe = ReadinessProbe(config.storageRoot, metadataIndex)
     val reconciliationEngine = ReconciliationEngine(root = config.storageRoot, index = metadataIndex)

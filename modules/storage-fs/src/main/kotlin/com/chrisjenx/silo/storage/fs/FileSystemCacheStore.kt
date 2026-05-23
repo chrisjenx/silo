@@ -36,6 +36,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
+import java.security.MessageDigest
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
 
@@ -66,6 +67,7 @@ class FileSystemCacheStore(
     private val mover: AtomicMover = DefaultAtomicMover,
     private val metadataIndex: com.chrisjenx.silo.storage.MetadataIndex? = null,
     private val reservedFreeBytes: Long = 0,
+    private val verifySha256OnRead: Boolean = false,
 ) : CacheStore {
     private val log = LoggerFactory.getLogger(FileSystemCacheStore::class.java)
     private val hits = AtomicLong(0)
@@ -74,6 +76,7 @@ class FileSystemCacheStore(
     private val evictions = AtomicLong(0)
     private val crossFsRenames = AtomicLong(0)
     private val enoentDrifts = AtomicLong(0)
+    private val corruptions = AtomicLong(0)
 
     /**
      * Number of times the atomic-rename path fell back to copy+delete because
@@ -89,6 +92,13 @@ class FileSystemCacheStore(
      * `silo_drift_detected_total{kind="missing_blob"}` once metrics land.
      */
     val enoentDriftCount: Long get() = enoentDrifts.get()
+
+    /**
+     * Number of times a GET found a blob whose SHA-256 no longer matched the
+     * indexed digest (only checked when [verifySha256OnRead] is on). Surfaced
+     * as `silo_corruption_detected_total`.
+     */
+    val corruptionDetectedCount: Long get() = corruptions.get()
 
     init {
         Files.createDirectories(root.resolve("cas"))
@@ -111,11 +121,47 @@ class FileSystemCacheStore(
                 misses.incrementAndGet()
                 return@withContext null
             }
+            if (verifySha256OnRead && isCorrupt(key, path)) {
+                // Tamper detected: drop the bad blob + row and report a miss so
+                // the client transparently re-uploads. Self-heals like ENOENT.
+                Files.deleteIfExists(path)
+                metadataIndex?.delete(key)
+                corruptions.incrementAndGet()
+                log.warn("SHA-256 mismatch on read: purging corrupt blob+row for key={}", key.short)
+                misses.incrementAndGet()
+                return@withContext null
+            }
             hits.incrementAndGet()
             val size = Files.size(path)
             val stream = Files.newInputStream(path, StandardOpenOption.READ)
             FsCacheReadHandle(stream.asSource().buffered(), size, stream)
         }
+
+    /**
+     * Returns true when the index holds a SHA-256 for [key] and the on-disk
+     * blob no longer hashes to it. With no indexed digest there is nothing to
+     * check against, so the blob is trusted.
+     */
+    private suspend fun isCorrupt(
+        key: CacheKey,
+        path: Path,
+    ): Boolean {
+        val expected = metadataIndex?.get(key)?.contentSha256 ?: return false
+        return !MessageDigest.isEqual(expected, sha256Of(path))
+    }
+
+    private fun sha256Of(path: Path): ByteArray {
+        val digest = MessageDigest.getInstance("SHA-256")
+        Files.newInputStream(path, StandardOpenOption.READ).use { input ->
+            val buffer = ByteArray(STREAM_BUFFER_SIZE)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest()
+    }
 
     override suspend fun put(
         key: CacheKey,
