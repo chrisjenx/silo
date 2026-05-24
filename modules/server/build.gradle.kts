@@ -57,6 +57,7 @@ dependencies {
     implementation(libs.ktor.server.auth)
     implementation(libs.micrometer.registry.prometheus)
     implementation(libs.bcrypt)
+    implementation(libs.nimbus.jose.jwt)
     implementation(libs.typesafe.config)
 
     implementation(libs.logback.classic)

@@ -18,13 +18,13 @@ package com.chrisjenx.silo.server
 import com.chrisjenx.silo.server.auth.AuthSettings
 import com.chrisjenx.silo.server.auth.Role
 import com.chrisjenx.silo.server.auth.SiloPrincipal
+import com.chrisjenx.silo.server.auth.authenticateSilo
 import com.chrisjenx.silo.storage.CacheStore
 import com.chrisjenx.silo.storage.MetadataIndex
 import com.chrisjenx.silo.storage.fs.ReconciliationEngine
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
-import io.ktor.server.auth.authenticate
 import io.ktor.server.auth.principal
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
@@ -45,7 +45,7 @@ fun Route.adminRoutes(
     storageRoot: java.nio.file.Path,
     config: SiloConfig,
 ) {
-    authenticate("silo", optional = true) {
+    authenticateSilo(auth, optional = true) {
         route("/api/stats") {
             get { call.handleStats(cacheStore, metadataIndex, auth) }
         }
@@ -56,7 +56,7 @@ fun Route.adminRoutes(
             call.handleConfig(auth, config)
         }
     }
-    authenticate("silo") {
+    authenticateSilo(auth) {
         route("/api/storage") {
             post("/reconcile") {
                 if (!call.requireWrite()) return@post

@@ -19,6 +19,7 @@ import com.chrisjenx.silo.metadata.sqlite.SqliteMetadataIndex
 import com.chrisjenx.silo.metrics.PrometheusFactory
 import com.chrisjenx.silo.metrics.bindSilo
 import com.chrisjenx.silo.server.auth.AuthSettings
+import com.chrisjenx.silo.server.auth.NimbusTokenVerifier
 import com.chrisjenx.silo.server.auth.PasswordVerifier
 import com.chrisjenx.silo.server.auth.UserStore
 import com.chrisjenx.silo.server.auth.installSiloAuth
@@ -81,11 +82,17 @@ fun Application.module() {
     val reconciliationEngine = ReconciliationEngine(root = config.storageRoot, index = metadataIndex)
     val meterRegistry = PrometheusFactory.create(env = "production", instance = "silo")
     val users = config.usersConfPath?.let { UserStore.loadFromFile(it) } ?: UserStore(emptyList())
+    val tokenVerifier =
+        config.oidc?.let {
+            log.info("OIDC bearer auth enabled: issuer={} jwks={}", it.issuer, it.jwksUrl)
+            NimbusTokenVerifier.fromJwksUrl(it)
+        }
     val auth =
         AuthSettings(
             anonymousRead = config.anonymousRead,
             users = users,
             verifier = PasswordVerifier(),
+            tokenVerifier = tokenVerifier,
         )
     installSiloModule(
         SiloServices(

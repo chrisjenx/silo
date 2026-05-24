@@ -15,6 +15,7 @@
  */
 package com.chrisjenx.silo.server
 
+import com.chrisjenx.silo.server.auth.OidcSettings
 import com.typesafe.config.Config
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -32,6 +33,7 @@ data class SiloConfig(
     val anonymousRead: Boolean = true,
     val usersConfPath: Path? = null,
     val verifySha256OnRead: Boolean = false,
+    val oidc: OidcSettings? = null,
 ) {
     companion object {
         /** Reads `silo.*` keys from [config], falling back to documented defaults. */
@@ -69,7 +71,26 @@ data class SiloConfig(
                         "silo.storage.verify-sha256-on-read",
                         false,
                     ),
+                oidc = loadOidc(config),
             )
+
+        /** Parses `silo.auth.oidc.*`; returns null unless `enabled = true`. */
+        private fun loadOidc(config: Config): OidcSettings? {
+            if (!config.optBoolean("silo.auth.oidc.enabled", false)) return null
+            return OidcSettings(
+                issuer = config.getString("silo.auth.oidc.issuer"),
+                jwksUrl = config.getString("silo.auth.oidc.jwks-url"),
+                audience =
+                    if (config.hasPath("silo.auth.oidc.audience")) {
+                        config.getString("silo.auth.oidc.audience")
+                    } else {
+                        null
+                    },
+                rolesClaim = config.optString("silo.auth.oidc.roles-claim", "roles"),
+                readRoleValues = config.optStringSet("silo.auth.oidc.read-roles"),
+                writeRoleValues = config.optStringSet("silo.auth.oidc.write-roles"),
+            )
+        }
 
         private fun Config.optInt(
             path: String,
@@ -90,5 +111,7 @@ data class SiloConfig(
             path: String,
             default: Boolean,
         ): Boolean = if (hasPath(path)) getBoolean(path) else default
+
+        private fun Config.optStringSet(path: String): Set<String> = if (hasPath(path)) getStringList(path).toSet() else emptySet()
     }
 }

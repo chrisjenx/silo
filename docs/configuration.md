@@ -106,6 +106,31 @@ silo {
 
     # In-memory verification cache TTL (avoids per-request bcrypt cost).
     verify-cache-ttl-seconds = 300
+
+    # OAuth2 resource-server (OIDC / Bearer) mode. Coexists with Basic: a
+    # request may present either an Authorization: Basic or Bearer header.
+    oidc {
+      # Off by default. When on, issuer + jwks-url are required.
+      enabled = false
+      enabled = ${?SILO_OIDC_ENABLED}
+
+      # Expected `iss` claim and the JWKS endpoint to fetch signing keys from.
+      # Keys are cached and refreshed on rotation (Nimbus JWKSource). RS256.
+      issuer = ${?SILO_OIDC_ISSUER}
+      jwks-url = ${?SILO_OIDC_JWKS_URL}
+
+      # Optional `aud` claim to require. Omit to skip audience checks.
+      audience = ${?SILO_OIDC_AUDIENCE}
+
+      # Claim carrying roles/scopes. Accepts an array (["a","b"]) or a
+      # space/comma-delimited string (e.g. the standard `scope` claim).
+      roles-claim = "roles"
+      roles-claim = ${?SILO_OIDC_ROLES_CLAIM}
+
+      # Claim values that grant each role. WRITE implies READ.
+      read-roles = [ "cache:read" ]
+      write-roles = [ "cache:write" ]
+    }
   }
 
   eviction {
@@ -163,6 +188,11 @@ silo {
 | `SILO_REQUEST_SIZE_LIMIT` | `silo.server.request-size-limit-bytes` | `500 MB` |
 | `SILO_USERS_FILE` | `silo.auth.users-file` | `/etc/silo/users.conf` |
 | `SILO_ANONYMOUS_READ` | `silo.auth.anonymous-read` | `true` |
+| `SILO_OIDC_ENABLED` | `silo.auth.oidc.enabled` | `false` |
+| `SILO_OIDC_ISSUER` | `silo.auth.oidc.issuer` | — |
+| `SILO_OIDC_JWKS_URL` | `silo.auth.oidc.jwks-url` | — |
+| `SILO_OIDC_AUDIENCE` | `silo.auth.oidc.audience` | — |
+| `SILO_OIDC_ROLES_CLAIM` | `silo.auth.oidc.roles-claim` | `roles` |
 | `SILO_VERIFY_SHA256` | `silo.storage.verify-sha256-on-read` | `false` |
 | `SILO_S3_BUCKET` | `silo.storage.s3.bucket` | — |
 | `SILO_S3_REGION` | `silo.storage.s3.region` | — |
