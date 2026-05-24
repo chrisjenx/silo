@@ -20,13 +20,13 @@ import com.chrisjenx.silo.protocol.ContentTypes
 import com.chrisjenx.silo.server.auth.AuthSettings
 import com.chrisjenx.silo.server.auth.Role
 import com.chrisjenx.silo.server.auth.SiloPrincipal
+import com.chrisjenx.silo.server.auth.authenticateSilo
 import com.chrisjenx.silo.storage.CacheStore
 import com.chrisjenx.silo.storage.PutOutcome
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
-import io.ktor.server.auth.authenticate
 import io.ktor.server.auth.principal
 import io.ktor.server.request.contentLength
 import io.ktor.server.request.receiveChannel
@@ -55,7 +55,7 @@ fun Route.cacheRoutes(
     auth: AuthSettings,
     maxEntryBytes: Long,
 ) {
-    authenticate("silo", optional = true) {
+    authenticateSilo(auth, optional = true) {
         route("/cache/{key}") {
             get { call.handleGet(store, auth) }
             head { call.handleHead(store, auth) }

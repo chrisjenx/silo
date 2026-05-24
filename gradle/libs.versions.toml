@@ -11,6 +11,7 @@ micrometer = "1.14.4"
 slf4j = "2.0.16"
 sqlite-jdbc = "3.49.1.0"
 bcrypt = "0.10.2"
+nimbus-jose-jwt = "9.41.1"
 typesafe-config = "1.4.3"
 shadow = "8.3.5"
 spotless = "7.0.2"
@@ -55,6 +56,7 @@ sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
 
 # Auth
 bcrypt = { module = "at.favre.lib:bcrypt", version.ref = "bcrypt" }
+nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbus-jose-jwt" }
 
 # Config
 typesafe-config = { module = "com.typesafe:config", version.ref = "typesafe-config" }
