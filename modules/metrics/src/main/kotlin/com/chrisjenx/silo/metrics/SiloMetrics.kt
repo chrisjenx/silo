@@ -20,6 +20,7 @@ import com.chrisjenx.silo.storage.EvictionReason
 import com.chrisjenx.silo.storage.fs.DriftKind
 import com.chrisjenx.silo.storage.fs.FileSystemCacheStore
 import com.chrisjenx.silo.storage.fs.ReconciliationEngine
+import com.chrisjenx.silo.storage.fs.StartupRecovery
 import io.micrometer.core.instrument.FunctionCounter
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Tags
@@ -38,6 +39,7 @@ fun MeterRegistry.bindSilo(
     cacheStore: FileSystemCacheStore,
     evictionEngine: EvictionEngine? = null,
     reconciliationEngine: ReconciliationEngine? = null,
+    startupRecovery: StartupRecovery? = null,
 ) {
     JvmMemoryMetrics().bindTo(this)
     JvmGcMetrics().bindTo(this)
@@ -71,6 +73,10 @@ fun MeterRegistry.bindSilo(
                 engine,
             ) { it.driftDetected(kind).toDouble() }
         }
+    }
+
+    startupRecovery?.let { recovery ->
+        counter("silo_recovery_orphans_cleaned", Tags.empty(), recovery) { it.orphansCleaned.toDouble() }
     }
 }
 

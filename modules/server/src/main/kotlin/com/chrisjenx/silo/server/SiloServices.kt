@@ -21,6 +21,7 @@ import com.chrisjenx.silo.server.auth.AuthSettings
 import com.chrisjenx.silo.storage.MetadataIndex
 import com.chrisjenx.silo.storage.fs.FileSystemCacheStore
 import com.chrisjenx.silo.storage.fs.ReconciliationEngine
+import com.chrisjenx.silo.storage.fs.StartupRecovery
 import com.chrisjenx.silo.storage.fs.StorageRootLock
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 
@@ -39,4 +40,5 @@ class SiloServices(
     val reconciliationEngine: ReconciliationEngine,
     val meterRegistry: PrometheusMeterRegistry,
     val auditLog: AuditLog = NoopAuditLog,
+    val startupRecovery: StartupRecovery? = null,
 )
