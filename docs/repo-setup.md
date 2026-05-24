@@ -1,3 +1,8 @@
+---
+title: Repository setup
+nav_order: 7
+---
+
 # Repository Setup
 
 The Silo repo is bootstrapped. This doc records what's applied and gives commands for forks or fresh deployments.
@@ -149,10 +154,19 @@ with `autoCreate=true` so the project is created on first publish.
 
 ### 9. GitHub Pages (optional)
 
+The docs site is built and deployed by the `pages.yml` workflow (Jekyll +
+just-the-docs over `docs/`). Set the Pages source to **GitHub Actions** so the
+workflow can publish:
+
 ```bash
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
-gh api -X POST "repos/$REPO/pages" -f source.branch=main -f source.path=/docs
+gh api -X POST "repos/$REPO/pages" -f build_type=workflow
+# If Pages is already enabled with a branch source, switch it:
+gh api -X PUT "repos/$REPO/pages" -f build_type=workflow
 ```
+
+The first deploy then runs on the next push to `main` that touches `docs/**`,
+or via **Actions → Deploy docs → Run workflow**.
 
 ## Verify
 

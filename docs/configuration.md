@@ -1,3 +1,8 @@
+---
+title: Configuration
+nav_order: 2
+---
+
 # Silo — Configuration Reference
 
 Silo is configured via HOCON (`application.conf`) with environment-variable overrides. Defaults are sensible; override only what your deployment needs.

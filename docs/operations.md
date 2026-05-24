@@ -1,3 +1,8 @@
+---
+title: Operations
+nav_order: 3
+---
+
 # Silo — Operations Runbook
 
 How to run, back up, monitor, and recover a Silo deployment.

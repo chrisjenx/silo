@@ -1,3 +1,8 @@
+---
+title: Limits
+nav_order: 5
+---
+
 # Silo — OS, Filesystem, and Ktor Limits
 
 What Silo expects from its host, and what to set if you're tuning for scale.

@@ -8,5 +8,8 @@
   "MD033": false,
   "MD060": false,
   "MD024": { "siblings_only": true },
-  "MD036": false
+  "MD036": false,
+  // Jekyll front-matter carries a `title:` for nav; the page still opens with
+  // an H1. Don't count the front-matter title as a second top-level heading.
+  "MD025": { "front_matter_title": "" }
 }

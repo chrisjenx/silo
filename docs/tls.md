@@ -1,3 +1,8 @@
+---
+title: TLS & reverse proxy
+nav_order: 4
+---
+
 # Silo — TLS and Reverse Proxy
 
 Silo speaks plain HTTP on its listen port by default. **Terminate TLS at a reverse proxy.**
