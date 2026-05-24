@@ -15,6 +15,8 @@
  */
 package com.chrisjenx.silo.server
 
+import com.chrisjenx.silo.server.audit.AuditLog
+import com.chrisjenx.silo.server.audit.NoopAuditLog
 import com.chrisjenx.silo.server.auth.AuthSettings
 import com.chrisjenx.silo.storage.MetadataIndex
 import com.chrisjenx.silo.storage.fs.FileSystemCacheStore
@@ -36,4 +38,5 @@ class SiloServices(
     val auth: AuthSettings,
     val reconciliationEngine: ReconciliationEngine,
     val meterRegistry: PrometheusMeterRegistry,
+    val auditLog: AuditLog = NoopAuditLog,
 )
