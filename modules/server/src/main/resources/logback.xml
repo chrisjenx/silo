@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+    <!-- Down-sample high-volume access logs. SILO_LOG_SAMPLE_RATE=1 logs all
+         (default); N keeps 1 of every N INFO access lines. WARN+ never dropped. -->
+    <turboFilter class="com.chrisjenx.silo.server.logging.SamplingTurboFilter">
+        <rate>${SILO_LOG_SAMPLE_RATE:-1}</rate>
+    </turboFilter>
+
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <includeContext>false</includeContext>

@@ -74,6 +74,13 @@ docker restart silo
 3. Verify the lockfile is gone (`rm -f /srv/silo-data/.silo.lock` if needed — only if you're sure no other Silo is running).
 4. Start Silo. On startup it scans for orphan `.tmp.*` files (>10 min old) and removes them. The first reconcile reconciles SQLite against the disk.
 
+## Logging
+
+Logs are JSON (Logback + logstash-encoder) on stdout — ship them straight to your aggregator.
+
+- **Request id**: every request is tagged with a `requestId` (the `X-Request-ID` header if the client/proxy sends one, else a generated UUID). It is echoed in the `X-Request-ID` response header and put in MDC, so it propagates across coroutine suspension points and appears in the JSON log line for that request. Correlate a client failure to a server log by its request id.
+- **Sampling**: on very busy nodes the per-request access line dominates log volume. Set `SILO_LOG_SAMPLE_RATE=N` to keep only 1 of every N INFO access lines (default `1` = keep all). WARN and above are never sampled, so error signal is preserved. Body bytes are never logged at any level.
+
 ## Monitoring
 
 - `/metrics` → Prometheus.

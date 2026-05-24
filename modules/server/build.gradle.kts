@@ -55,6 +55,7 @@ dependencies {
     implementation(libs.ktor.server.default.headers)
     implementation(libs.ktor.server.metrics.micrometer)
     implementation(libs.ktor.server.auth)
+    implementation(libs.ktor.server.call.id)
     implementation(libs.micrometer.registry.prometheus)
     implementation(libs.bcrypt)
     implementation(libs.nimbus.jose.jwt)
