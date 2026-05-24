@@ -18,6 +18,8 @@ package com.chrisjenx.silo.server
 import com.chrisjenx.silo.metadata.sqlite.SqliteMetadataIndex
 import com.chrisjenx.silo.metrics.PrometheusFactory
 import com.chrisjenx.silo.metrics.bindSilo
+import com.chrisjenx.silo.server.audit.JsonlAuditLog
+import com.chrisjenx.silo.server.audit.NoopAuditLog
 import com.chrisjenx.silo.server.auth.AuthSettings
 import com.chrisjenx.silo.server.auth.NimbusTokenVerifier
 import com.chrisjenx.silo.server.auth.PasswordVerifier
@@ -94,6 +96,7 @@ fun Application.module() {
             verifier = PasswordVerifier(),
             tokenVerifier = tokenVerifier,
         )
+    val auditLog = buildAuditLog(config)
     installSiloModule(
         SiloServices(
             config = config,
@@ -104,9 +107,16 @@ fun Application.module() {
             auth = auth,
             reconciliationEngine = reconciliationEngine,
             meterRegistry = meterRegistry,
+            auditLog = auditLog,
         ),
     )
 }
+
+private fun buildAuditLog(config: SiloConfig): com.chrisjenx.silo.server.audit.AuditLog =
+    config.auditDir?.let {
+        LoggerFactory.getLogger("com.chrisjenx.silo.server.Boot").info("admin audit log enabled: dir={}", it)
+        JsonlAuditLog(it)
+    } ?: NoopAuditLog
 
 /**
  * Wires Silo routes onto [Application] using [services]. Extracted so
@@ -179,6 +189,7 @@ fun Application.installSiloModule(services: SiloServices) {
             auth = services.auth,
             storageRoot = services.config.storageRoot,
             config = services.config,
+            auditLog = services.auditLog,
         )
     }
 }

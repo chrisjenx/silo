@@ -133,6 +133,15 @@ silo {
     }
   }
 
+  audit {
+    # Append-only JSONL audit log of admin-API mutations (e.g. reconcile),
+    # written to `<dir>/audit-<UTC-date>.jsonl` and rotated daily.
+    enabled = false
+    enabled = ${?SILO_AUDIT_ENABLED}
+    dir = "/data/audit"
+    dir = ${?SILO_AUDIT_DIR}
+  }
+
   eviction {
     policy = "lru"
     target-utilization = 0.90
@@ -193,6 +202,8 @@ silo {
 | `SILO_OIDC_JWKS_URL` | `silo.auth.oidc.jwks-url` | — |
 | `SILO_OIDC_AUDIENCE` | `silo.auth.oidc.audience` | — |
 | `SILO_OIDC_ROLES_CLAIM` | `silo.auth.oidc.roles-claim` | `roles` |
+| `SILO_AUDIT_ENABLED` | `silo.audit.enabled` | `false` |
+| `SILO_AUDIT_DIR` | `silo.audit.dir` | `/data/audit` |
 | `SILO_VERIFY_SHA256` | `silo.storage.verify-sha256-on-read` | `false` |
 | `SILO_S3_BUCKET` | `silo.storage.s3.bucket` | — |
 | `SILO_S3_REGION` | `silo.storage.s3.region` | — |

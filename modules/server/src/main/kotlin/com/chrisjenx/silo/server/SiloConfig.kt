@@ -34,6 +34,7 @@ data class SiloConfig(
     val usersConfPath: Path? = null,
     val verifySha256OnRead: Boolean = false,
     val oidc: OidcSettings? = null,
+    val auditDir: Path? = null,
 ) {
     companion object {
         /** Reads `silo.*` keys from [config], falling back to documented defaults. */
@@ -72,6 +73,12 @@ data class SiloConfig(
                         false,
                     ),
                 oidc = loadOidc(config),
+                auditDir =
+                    if (config.optBoolean("silo.audit.enabled", false)) {
+                        Paths.get(config.optString("silo.audit.dir", "/data/audit"))
+                    } else {
+                        null
+                    },
             )
 
         /** Parses `silo.auth.oidc.*`; returns null unless `enabled = true`. */

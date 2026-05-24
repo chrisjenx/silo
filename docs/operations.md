@@ -82,6 +82,10 @@ docker restart silo
 - `/api/stats` → one-shot JSON stats snapshot (entryCount, bytesStored, hits, misses, puts, evictions, hitRate).
 - `/api/stream/stats` → Server-Sent Events; emits the same JSON snapshot once per second as `data:` frames. The admin dashboard subscribes for live tile updates. Honors the same read-auth posture as `/api/stats` (anonymous when `anonymous-read = true`, else READ role required). Example: `curl -N http://localhost:8080/api/stream/stats`.
 
+### Audit log
+
+With `silo.audit.enabled = true`, every admin-API mutation (e.g. `POST /api/storage/reconcile`) appends one JSON line to `<silo.audit.dir>/audit-<UTC-date>.jsonl`. Each entry records `timestamp`, `actor` (the authenticated username, or `anonymous`), `action`, `outcome`, and action-specific `details`. Files rotate at the UTC day boundary — point your log shipper at the directory glob and let it tail the current day's file. The log is append-only; back it up or ship it off-box if you need tamper-evidence.
+
 Key metrics to watch:
 
 | Metric | Alert when |

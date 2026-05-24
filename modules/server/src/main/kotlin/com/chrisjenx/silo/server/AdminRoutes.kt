@@ -15,6 +15,9 @@
  */
 package com.chrisjenx.silo.server
 
+import com.chrisjenx.silo.server.audit.AuditEntry
+import com.chrisjenx.silo.server.audit.AuditLog
+import com.chrisjenx.silo.server.audit.NoopAuditLog
 import com.chrisjenx.silo.server.auth.AuthSettings
 import com.chrisjenx.silo.server.auth.Role
 import com.chrisjenx.silo.server.auth.SiloPrincipal
@@ -49,6 +52,7 @@ fun Route.adminRoutes(
     auth: AuthSettings,
     storageRoot: java.nio.file.Path,
     config: SiloConfig,
+    auditLog: AuditLog = NoopAuditLog,
 ) {
     authenticateSilo(auth, optional = true) {
         route("/api/stats") {
@@ -69,6 +73,20 @@ fun Route.adminRoutes(
             post("/reconcile") {
                 if (!call.requireWrite()) return@post
                 val result = reconciliationEngine.reconcile()
+                auditLog.record(
+                    AuditEntry(
+                        timestampMs = System.currentTimeMillis(),
+                        actor = call.principal<SiloPrincipal>()?.username ?: "anonymous",
+                        action = "storage.reconcile",
+                        outcome = "ok",
+                        details =
+                            mapOf(
+                                "orphanBlobsReindexed" to result.orphanBlobsReindexed.toString(),
+                                "orphanRowsDeleted" to result.orphanRowsDeleted.toString(),
+                                "staleTmpDeleted" to result.staleTmpDeleted.toString(),
+                            ),
+                    ),
+                )
                 call.respondText(
                     contentType = ContentType.Application.Json,
                     status = HttpStatusCode.OK,
