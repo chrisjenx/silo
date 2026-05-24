@@ -100,6 +100,7 @@ Key metrics to watch:
 | `silo_storage_errors_total{kind="enospc"}` | rate > 0 |
 | `silo_storage_errors_total{kind="reserved_free_bytes"}` | rate > 0 (acceptance dropped due to disk threshold) |
 | `silo_drift_detected_total` | rate spike — investigate external interference |
+| `silo_recovery_orphans_cleaned_total` | non-zero after a boot — the node crashed mid-PUT previously; expected, but a steady rate hints at frequent unclean shutdowns |
 | `silo_corruption_detected_total` | non-zero — investigate immediately |
 | `silo_request_duration_seconds{quantile="0.99"}` | > performance budget |
 | `silo_store_size_bytes` | trending toward `max-bytes` faster than eviction runs |

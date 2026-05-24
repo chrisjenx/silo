@@ -28,6 +28,7 @@ import com.chrisjenx.silo.server.auth.installSiloAuth
 import com.chrisjenx.silo.storage.fs.FileSystemCacheStore
 import com.chrisjenx.silo.storage.fs.FilesystemSupport
 import com.chrisjenx.silo.storage.fs.ReconciliationEngine
+import com.chrisjenx.silo.storage.fs.StartupRecovery
 import com.chrisjenx.silo.storage.fs.StorageRootLock
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -84,6 +85,7 @@ fun Application.module() {
             verifySha256OnRead = config.verifySha256OnRead,
         )
     val readinessProbe = ReadinessProbe(config.storageRoot, metadataIndex)
+    val startupRecovery = runStartupRecovery(config.storageRoot, log)
     val reconciliationEngine = ReconciliationEngine(root = config.storageRoot, index = metadataIndex)
     val meterRegistry = PrometheusFactory.create(env = "production", instance = "silo")
     val users = config.usersConfPath?.let { UserStore.loadFromFile(it) } ?: UserStore(emptyList())
@@ -111,8 +113,19 @@ fun Application.module() {
             reconciliationEngine = reconciliationEngine,
             meterRegistry = meterRegistry,
             auditLog = auditLog,
+            startupRecovery = startupRecovery,
         ),
     )
+}
+
+private fun runStartupRecovery(
+    root: java.nio.file.Path,
+    log: org.slf4j.Logger,
+): StartupRecovery {
+    val recovery = StartupRecovery(root = root)
+    val cleaned = recovery.cleanOrphanTmp()
+    log.info("startup recovery scan complete: orphanTmpCleaned={}", cleaned)
+    return recovery
 }
 
 private fun buildAuditLog(config: SiloConfig): com.chrisjenx.silo.server.audit.AuditLog =
@@ -142,6 +155,7 @@ private fun Application.installSiloPlugins(services: SiloServices) {
     services.meterRegistry.bindSilo(
         cacheStore = services.cacheStore,
         reconciliationEngine = services.reconciliationEngine,
+        startupRecovery = services.startupRecovery,
     )
     install(DefaultHeaders) {
         header("Server", "silo/${SiloVersion.version}")
