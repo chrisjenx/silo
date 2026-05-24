@@ -24,5 +24,8 @@ docs/
 *.md
 !README.md
 
+# Test fixtures (not part of the server build)
+e2e/
+
 # Logs
 **/*.log

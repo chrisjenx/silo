@@ -164,6 +164,59 @@ jobs:
             -e AUTH='ci:silo-ci-secret' \
             bench/k6/smoke.js
 
+  gradle-cache-e2e:
+    name: gradle cache e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Build fat jar
+        run: ./gradlew --no-daemon --stacktrace :server:shadowJar -x test
+
+      - name: Boot silo and run the Gradle build-cache e2e
+        run: |
+          set -euo pipefail
+          DATA="$(mktemp -d -p /dev/shm)"
+          # Same throwaway WRITE user as the k6 smoke job (bcrypt of "silo-ci-secret").
+          cat > ci-users.conf <<'USERS'
+          silo {
+            users = [
+              {
+                username = "ci"
+                password-hash = "$2a$10$y3XGw7R720reVhD91l/yYuJbMcIBd4NsFhYPErAUy91jC3P14Si3W"
+                roles = ["read", "write"]
+              }
+            ]
+          }
+          USERS
+          JAR="$(ls modules/server/build/libs/silo-*-all.jar | head -1)"
+          SILO_PORT=8080 SILO_STORAGE_ROOT="$DATA" \
+            java -Dsilo.auth.users-file="$PWD/ci-users.conf" -jar "$JAR" &
+          SILO_PID=$!
+          trap 'kill "$SILO_PID" 2>/dev/null || true' EXIT
+
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8080/health
+
+          SILO_CACHE_USER=ci SILO_CACHE_PASSWORD=silo-ci-secret \
+            bash e2e/gradle-cache/run.sh
+
   markdown:
     name: docs lint
     runs-on: ubuntu-latest
