@@ -42,6 +42,26 @@ jobs:
           cp modules/server/build/reports/bom.json dist/silo-sbom.cdx.json
           (cd dist && sha256sum silo.jar silo-sbom.cdx.json > checksums.txt)
 
+      # Publish the CycloneDX SBOM to a Dependency-Track instance for
+      # continuous vulnerability tracking. No-ops unless DEPENDENCYTRACK_URL is
+      # configured as a repo/org secret, so forks and unconfigured repos skip it.
+      - name: Publish SBOM to Dependency-Track
+        env:
+          DT_URL: ${{ secrets.DEPENDENCYTRACK_URL }}
+          DT_API_KEY: ${{ secrets.DEPENDENCYTRACK_API_KEY }}
+        run: |
+          if [ -z "$DT_URL" ]; then
+            echo "DEPENDENCYTRACK_URL not set — skipping SBOM publish."
+            exit 0
+          fi
+          version="${GITHUB_REF_NAME#v}"
+          curl -fsS -X POST "${DT_URL%/}/api/v1/bom" \
+            -H "X-Api-Key: $DT_API_KEY" \
+            -F "autoCreate=true" \
+            -F "projectName=silo" \
+            -F "projectVersion=$version" \
+            -F "bom=@dist/silo-sbom.cdx.json"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
 
