@@ -29,11 +29,14 @@ import com.chrisjenx.silo.storage.fs.FileSystemCacheStore
 import com.chrisjenx.silo.storage.fs.FilesystemSupport
 import com.chrisjenx.silo.storage.fs.ReconciliationEngine
 import com.chrisjenx.silo.storage.fs.StorageRootLock
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.http.content.staticResources
 import io.ktor.server.metrics.micrometer.MicrometerMetrics
+import io.ktor.server.plugins.callid.CallId
+import io.ktor.server.plugins.callid.callIdMdc
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.defaultheaders.DefaultHeaders
 import io.ktor.server.plugins.statuspages.StatusPages
@@ -125,6 +128,12 @@ private fun buildAuditLog(config: SiloConfig): com.chrisjenx.silo.server.audit.A
  */
 private fun Application.installSiloPlugins(services: SiloServices) {
     installSiloAuth(services.auth)
+    install(CallId) {
+        header(HttpHeaders.XRequestId)
+        generate { java.util.UUID.randomUUID().toString() }
+        verify { it.isNotBlank() }
+        replyToHeader(HttpHeaders.XRequestId)
+    }
     install(MicrometerMetrics) {
         registry = services.meterRegistry
     }
@@ -139,6 +148,10 @@ private fun Application.installSiloPlugins(services: SiloServices) {
     }
     install(CallLogging) {
         level = Level.INFO
+        // Propagate the request id into MDC so every log line emitted within a
+        // request — including across coroutine suspension points — carries it.
+        // The logstash encoder serialises MDC into the JSON log automatically.
+        callIdMdc("requestId")
         // Only emit prefix + duration + status — never the body.
         format { call -> "[${call.response.status()}] ${call.request.local.method.value} ${call.request.path()}" }
     }
