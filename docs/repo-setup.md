@@ -132,7 +132,22 @@ gh api -X PATCH "repos/$REPO" --input - <<'JSON'
 JSON
 ```
 
-### 8. GitHub Pages (optional)
+### 8. Dependency-Track SBOM publishing (optional)
+
+`release.yml` uploads the CycloneDX SBOM to a [Dependency-Track](https://dependencytrack.org/)
+instance on each release. It is a no-op unless these secrets are set, so it stays
+dormant on forks and unconfigured repos:
+
+```bash
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+gh secret set DEPENDENCYTRACK_URL --repo "$REPO"      # e.g. https://dtrack.example.com
+gh secret set DEPENDENCYTRACK_API_KEY --repo "$REPO"  # DT API key with BOM_UPLOAD + PROJECT_CREATION_UPLOAD
+```
+
+The SBOM is uploaded to project `silo`, version = release tag (leading `v` stripped),
+with `autoCreate=true` so the project is created on first publish.
+
+### 9. GitHub Pages (optional)
 
 ```bash
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
