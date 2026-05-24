@@ -32,6 +32,7 @@ import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.ResultSet
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * SQLite-backed [MetadataIndex] with a single file persisted at [dbPath].
@@ -52,6 +53,8 @@ class SqliteMetadataIndex private constructor(
     private val log = LoggerFactory.getLogger(SqliteMetadataIndex::class.java)
     private val touchQueue = ConcurrentHashMap<String, Long>()
     private val writeLock = Mutex()
+    private val checkpoints = AtomicLong(0)
+    private val vacuums = AtomicLong(0)
 
     @Volatile
     private var closed = false
@@ -169,6 +172,42 @@ class SqliteMetadataIndex private constructor(
         withContext(ioDispatcher) {
             writeLock.withLock { flushBlocking() }
         }
+
+    /**
+     * Flushes pending touches, then `PRAGMA wal_checkpoint(TRUNCATE)` to fold
+     * the WAL back into the main DB and shrink the `-wal` file. Serialized
+     * against writers via [writeLock]; safe to call periodically.
+     */
+    suspend fun walCheckpointTruncate(): Unit =
+        withContext(ioDispatcher) {
+            writeLock.withLock {
+                flushBlocking()
+                connection.createStatement().use { it.execute("PRAGMA wal_checkpoint(TRUNCATE)") }
+                checkpoints.incrementAndGet()
+                Unit
+            }
+        }
+
+    /**
+     * Reclaims free pages with `VACUUM`. Cannot run inside a transaction, so
+     * it flushes first and runs with autocommit on (the steady state); the
+     * [writeLock] keeps it from racing other writers.
+     */
+    suspend fun vacuum(): Unit =
+        withContext(ioDispatcher) {
+            writeLock.withLock {
+                flushBlocking()
+                connection.createStatement().use { it.execute("VACUUM") }
+                vacuums.incrementAndGet()
+                Unit
+            }
+        }
+
+    /** Lifetime count of WAL checkpoints run via [walCheckpointTruncate]. */
+    val checkpointCount: Long get() = checkpoints.get()
+
+    /** Lifetime count of [vacuum] runs. */
+    val vacuumCount: Long get() = vacuums.get()
 
     override fun close() {
         synchronized(this) {

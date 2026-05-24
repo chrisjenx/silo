@@ -205,6 +205,8 @@ silo {
 | `SILO_AUDIT_ENABLED` | `silo.audit.enabled` | `false` |
 | `SILO_AUDIT_DIR` | `silo.audit.dir` | `/data/audit` |
 | `SILO_LOG_SAMPLE_RATE` | logback turbo filter rate | `1` (log all) |
+| `SILO_SQLITE_CHECKPOINT_INTERVAL_SECONDS` | `silo.sqlite.checkpoint-interval-seconds` | `300` |
+| `SILO_SQLITE_VACUUM_INTERVAL_SECONDS` | `silo.sqlite.vacuum-interval-seconds` | `86400` |
 | `SILO_VERIFY_SHA256` | `silo.storage.verify-sha256-on-read` | `false` |
 | `SILO_S3_BUCKET` | `silo.storage.s3.bucket` | — |
 | `SILO_S3_REGION` | `silo.storage.s3.region` | — |

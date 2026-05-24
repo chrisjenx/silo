@@ -15,6 +15,7 @@
  */
 package com.chrisjenx.silo.server
 
+import com.chrisjenx.silo.metadata.sqlite.SqliteMaintenanceScheduler
 import com.chrisjenx.silo.metadata.sqlite.SqliteMetadataIndex
 import com.chrisjenx.silo.metrics.PrometheusFactory
 import com.chrisjenx.silo.metrics.bindSilo
@@ -84,6 +85,7 @@ fun Application.module() {
             metadataIndex = metadataIndex,
             verifySha256OnRead = config.verifySha256OnRead,
         )
+    startSqliteMaintenance(this, metadataIndex, config)
     val readinessProbe = ReadinessProbe(config.storageRoot, metadataIndex)
     val startupRecovery = runStartupRecovery(config.storageRoot, log)
     val reconciliationEngine = ReconciliationEngine(root = config.storageRoot, index = metadataIndex)
@@ -116,6 +118,18 @@ fun Application.module() {
             startupRecovery = startupRecovery,
         ),
     )
+}
+
+private fun startSqliteMaintenance(
+    scope: kotlinx.coroutines.CoroutineScope,
+    index: SqliteMetadataIndex,
+    config: SiloConfig,
+) {
+    SqliteMaintenanceScheduler(
+        index = index,
+        checkpointInterval = java.time.Duration.ofSeconds(config.sqliteCheckpointIntervalSeconds),
+        vacuumInterval = java.time.Duration.ofSeconds(config.sqliteVacuumIntervalSeconds),
+    ).launchIn(scope)
 }
 
 private fun runStartupRecovery(
