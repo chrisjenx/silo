@@ -79,6 +79,8 @@ docker restart silo
 - `/metrics` → Prometheus.
 - `/health` → 200 once the JVM is up.
 - `/ready` → 200 once SQLite is open and the storage root is writable.
+- `/api/stats` → one-shot JSON stats snapshot (entryCount, bytesStored, hits, misses, puts, evictions, hitRate).
+- `/api/stream/stats` → Server-Sent Events; emits the same JSON snapshot once per second as `data:` frames. The admin dashboard subscribes for live tile updates. Honors the same read-auth posture as `/api/stats` (anonymous when `anonymous-read = true`, else READ role required). Example: `curl -N http://localhost:8080/api/stream/stats`.
 
 Key metrics to watch:
 
