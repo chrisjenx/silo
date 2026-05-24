@@ -122,6 +122,11 @@ Symptoms: high `silo_cache_misses_total` rate, low hit ratio.
 - Check `Dispatchers.IO.limitedParallelism` and `silo.server.max-concurrent-disk-ops` — raise on fast NVMe.
 - Inspect proxy buffering settings. `nginx` without `proxy_request_buffering off` will appear slow.
 
+### SQLite growth
+
+- A background task runs `PRAGMA wal_checkpoint(TRUNCATE)` every `silo.sqlite.checkpoint-interval-seconds` (default 300s) to keep `silo.db-wal` from growing without bound under sustained writes, and `VACUUM` every `silo.sqlite.vacuum-interval-seconds` (default 24h) to reclaim pages after large evictions.
+- Both run on the metadata writer lock, so they serialize with writes but never block reads. On a large index a `VACUUM` rewrites the whole DB file — if it stalls writers noticeably, lengthen the vacuum interval rather than disabling checkpoints.
+
 ### Slow GETs
 
 - Hot keys should fit in the page cache. If your working set exceeds RAM and you're paging from disk, GET p99 will rise. Add RAM or split the cache.

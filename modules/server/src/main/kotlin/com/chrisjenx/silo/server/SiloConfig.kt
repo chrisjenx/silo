@@ -35,6 +35,8 @@ data class SiloConfig(
     val verifySha256OnRead: Boolean = false,
     val oidc: OidcSettings? = null,
     val auditDir: Path? = null,
+    val sqliteCheckpointIntervalSeconds: Long = 300,
+    val sqliteVacuumIntervalSeconds: Long = 86_400,
 ) {
     companion object {
         /** Reads `silo.*` keys from [config], falling back to documented defaults. */
@@ -73,6 +75,10 @@ data class SiloConfig(
                         false,
                     ),
                 oidc = loadOidc(config),
+                sqliteCheckpointIntervalSeconds =
+                    config.optLong("silo.sqlite.checkpoint-interval-seconds", 300L),
+                sqliteVacuumIntervalSeconds =
+                    config.optLong("silo.sqlite.vacuum-interval-seconds", 86_400L),
                 auditDir =
                     if (config.optBoolean("silo.audit.enabled", false)) {
                         Paths.get(config.optString("silo.audit.dir", "/data/audit"))
