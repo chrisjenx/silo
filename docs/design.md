@@ -1,3 +1,8 @@
+---
+title: Design language
+nav_order: 6
+---
+
 # Silo — Design Language
 
 ```

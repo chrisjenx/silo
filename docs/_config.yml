@@ -1,0 +1,29 @@
+# Jekyll configuration for the Silo documentation site (GitHub Pages).
+# Renders the existing docs/*.md in place — do not fork content here.
+title: Silo
+description: >-
+  OSS Kotlin/Ktor replacement for the EOL Gradle Remote Build Cache Node.
+  A drop-in HTTP server speaking the Gradle build cache protocol.
+
+remote_theme: just-the-docs/just-the-docs
+
+# GitHub Pages whitelisted plugins.
+plugins:
+  - jekyll-relative-links # so [x](configuration.md) links resolve to .html
+  - jekyll-seo-tag
+
+# just-the-docs options
+color_scheme: dark
+search_enabled: true
+heading_anchors: true
+
+aux_links:
+  Silo on GitHub:
+    - "https://github.com/chrisjenx/silo"
+aux_links_new_tab: true
+
+# Files that are not part of the rendered site.
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor/
