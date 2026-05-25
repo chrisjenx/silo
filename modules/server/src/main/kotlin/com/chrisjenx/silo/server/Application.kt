@@ -26,6 +26,12 @@ import com.chrisjenx.silo.server.auth.NimbusTokenVerifier
 import com.chrisjenx.silo.server.auth.PasswordVerifier
 import com.chrisjenx.silo.server.auth.UserStore
 import com.chrisjenx.silo.server.auth.installSiloAuth
+import com.chrisjenx.silo.storage.CacheStore
+import com.chrisjenx.silo.storage.EvictionCaps
+import com.chrisjenx.silo.storage.EvictionEngine
+import com.chrisjenx.silo.storage.EvictionScheduler
+import com.chrisjenx.silo.storage.MetadataIndex
+import com.chrisjenx.silo.storage.fs.FileStoreFreeSpace
 import com.chrisjenx.silo.storage.fs.FileSystemCacheStore
 import com.chrisjenx.silo.storage.fs.FilesystemSupport
 import com.chrisjenx.silo.storage.fs.ReconciliationEngine
@@ -51,6 +57,8 @@ import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 import java.nio.file.Files
 import java.nio.file.Path
+
+private const val MILLIS_PER_DAY: Long = 86_400_000L
 
 /**
  * Default Ktor entry point. Pulled in by application.conf via
@@ -83,26 +91,22 @@ fun Application.module() {
             root = config.storageRoot,
             maxEntryBytes = config.maxEntryBytes,
             metadataIndex = metadataIndex,
+            // Defense in depth: the route-level ReservedSpaceGuard rejects pre-body
+            // off a ~1s-cached reading; the store re-checks live usable space at
+            // write time so a burst that drains the reserve between the two is
+            // still caught.
+            reservedFreeBytes = config.reservedFreeBytes,
             verifySha256OnRead = config.verifySha256OnRead,
         )
     startSqliteMaintenance(this, metadataIndex, config)
+    val evictionEngine = buildEvictionEngine(cacheStore, metadataIndex, config)
+    startEvictionSweeper(this, evictionEngine, config)
+    val freeSpace = FileStoreFreeSpace(config.storageRoot)
     val readinessProbe = ReadinessProbe(config.storageRoot, metadataIndex)
     val startupRecovery = runStartupRecovery(config.storageRoot, log)
     val reconciliationEngine = ReconciliationEngine(root = config.storageRoot, index = metadataIndex)
     val meterRegistry = PrometheusFactory.create(env = "production", instance = "silo")
-    val users = config.usersConfPath?.let { UserStore.loadFromFile(it) } ?: UserStore(emptyList())
-    val tokenVerifier =
-        config.oidc?.let {
-            log.info("OIDC bearer auth enabled: issuer={} jwks={}", it.issuer, it.jwksUrl)
-            NimbusTokenVerifier.fromJwksUrl(it)
-        }
-    val auth =
-        AuthSettings(
-            anonymousRead = config.anonymousRead,
-            users = users,
-            verifier = PasswordVerifier(),
-            tokenVerifier = tokenVerifier,
-        )
+    val auth = buildAuthSettings(config, log)
     val auditLog = buildAuditLog(config)
     installSiloModule(
         SiloServices(
@@ -116,6 +120,8 @@ fun Application.module() {
             meterRegistry = meterRegistry,
             auditLog = auditLog,
             startupRecovery = startupRecovery,
+            freeSpace = freeSpace,
+            evictionEngine = evictionEngine,
         ),
     )
 }
@@ -132,6 +138,34 @@ private fun startSqliteMaintenance(
     ).launchIn(scope)
 }
 
+private fun buildEvictionEngine(
+    cacheStore: CacheStore,
+    metadataIndex: MetadataIndex,
+    config: SiloConfig,
+): EvictionEngine =
+    EvictionEngine(
+        store = cacheStore,
+        index = metadataIndex,
+        caps =
+            EvictionCaps(
+                maxBytes = config.maxBytes,
+                maxEntries = config.maxEntries,
+                maxDeletesPerCycle = config.maxDeletesPerCycle,
+                maxAgeMs = config.maxAgeDays.toLong() * MILLIS_PER_DAY,
+            ),
+    )
+
+private fun startEvictionSweeper(
+    scope: kotlinx.coroutines.CoroutineScope,
+    engine: EvictionEngine,
+    config: SiloConfig,
+) {
+    EvictionScheduler(
+        sweep = engine::sweep,
+        interval = java.time.Duration.ofSeconds(config.evictionSweepIntervalSeconds),
+    ).launchIn(scope)
+}
+
 private fun runStartupRecovery(
     root: java.nio.file.Path,
     log: org.slf4j.Logger,
@@ -140,6 +174,24 @@ private fun runStartupRecovery(
     val cleaned = recovery.cleanOrphanTmp()
     log.info("startup recovery scan complete: orphanTmpCleaned={}", cleaned)
     return recovery
+}
+
+private fun buildAuthSettings(
+    config: SiloConfig,
+    log: org.slf4j.Logger,
+): AuthSettings {
+    val users = config.usersConfPath?.let { UserStore.loadFromFile(it) } ?: UserStore(emptyList())
+    val tokenVerifier =
+        config.oidc?.let {
+            log.info("OIDC bearer auth enabled: issuer={} jwks={}", it.issuer, it.jwksUrl)
+            NimbusTokenVerifier.fromJwksUrl(it)
+        }
+    return AuthSettings(
+        anonymousRead = config.anonymousRead,
+        users = users,
+        verifier = PasswordVerifier(),
+        tokenVerifier = tokenVerifier,
+    )
 }
 
 private fun buildAuditLog(config: SiloConfig): com.chrisjenx.silo.server.audit.AuditLog =
@@ -168,6 +220,7 @@ private fun Application.installSiloPlugins(services: SiloServices) {
     // in module() so the test harness gets them too.
     services.meterRegistry.bindSilo(
         cacheStore = services.cacheStore,
+        evictionEngine = services.evictionEngine,
         reconciliationEngine = services.reconciliationEngine,
         startupRecovery = services.startupRecovery,
     )
@@ -222,7 +275,13 @@ fun Application.installSiloModule(services: SiloServices) {
             )
         }
         staticResources(remotePath = "/admin", basePackage = "static/admin", index = "index.html")
-        cacheRoutes(services.cacheStore, services.auth, services.config.maxEntryBytes)
+        val spaceGuard =
+            com.chrisjenx.silo.storage.fs.ReservedSpaceGuard(
+                free = services.freeSpace,
+                reservedFreeBytes = services.config.reservedFreeBytes,
+                reservedFreeInodes = services.config.reservedFreeInodes,
+            )
+        cacheRoutes(services.cacheStore, services.auth, services.config.maxEntryBytes, spaceGuard)
         adminRoutes(
             reconciliationEngine = services.reconciliationEngine,
             cacheStore = services.cacheStore,

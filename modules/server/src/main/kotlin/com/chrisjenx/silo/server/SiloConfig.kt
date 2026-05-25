@@ -45,6 +45,7 @@ data class SiloConfig(
     val reservedFreeInodes: Long = 100_000,
     val maxAgeDays: Int = 30,
     val maxDeletesPerCycle: Int = 1_000,
+    val evictionSweepIntervalSeconds: Long = 60,
 ) {
     companion object {
         /** Reads `silo.*` keys from [config], falling back to documented defaults. */
@@ -99,6 +100,7 @@ data class SiloConfig(
                 reservedFreeInodes = config.optLong("silo.storage.reserved-free-inodes", 100_000L),
                 maxAgeDays = config.optInt("silo.eviction.max-age-days", 30),
                 maxDeletesPerCycle = config.optInt("silo.eviction.max-deletes-per-cycle", 1_000),
+                evictionSweepIntervalSeconds = config.optLong("silo.eviction.sweep-interval-seconds", 60L),
             )
 
         /** Parses `silo.auth.oidc.*`; returns null unless `enabled = true`. */

@@ -23,6 +23,7 @@ import com.chrisjenx.silo.server.auth.SiloPrincipal
 import com.chrisjenx.silo.server.auth.authenticateSilo
 import com.chrisjenx.silo.storage.CacheStore
 import com.chrisjenx.silo.storage.PutOutcome
+import com.chrisjenx.silo.storage.fs.ReservedSpaceGuard
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -54,12 +55,13 @@ fun Route.cacheRoutes(
     store: CacheStore,
     auth: AuthSettings,
     maxEntryBytes: Long,
+    spaceGuard: ReservedSpaceGuard,
 ) {
     authenticateSilo(auth, optional = true) {
         route("/cache/{key}") {
             get { call.handleGet(store, auth) }
             head { call.handleHead(store, auth) }
-            put { call.handlePut(store, maxEntryBytes) }
+            put { call.handlePut(store, maxEntryBytes, spaceGuard) }
         }
     }
 }
@@ -104,18 +106,11 @@ private suspend fun ApplicationCall.handleHead(
 private suspend fun ApplicationCall.handlePut(
     store: CacheStore,
     maxEntryBytes: Long,
+    spaceGuard: ReservedSpaceGuard,
 ) {
     if (!authorize(Role.WRITE, allowAnonymous = false)) return
     val key = parsedKey() ?: return respond(HttpStatusCode.BadRequest)
-    val declaredSize = request.contentLength()
-    if (declaredSize == null || declaredSize < 0) {
-        return respond(HttpStatusCode.LengthRequired)
-    }
-    // Reject oversize before reading the body — short-circuits Ktor's
-    // Expect: 100-continue handshake so the client does not upload.
-    if (declaredSize > maxEntryBytes) {
-        return respond(HttpStatusCode.PayloadTooLarge)
-    }
+    val declaredSize = validatedSize(maxEntryBytes, spaceGuard) ?: return
     val source = receiveChannel().toInputStream().asSource().buffered()
     when (store.put(key, declaredSize, source)) {
         is PutOutcome.Stored, is PutOutcome.AlreadyPresent ->
@@ -125,6 +120,35 @@ private suspend fun ApplicationCall.handlePut(
         is PutOutcome.NoSpace ->
             respond(HttpStatusCode.ServiceUnavailable)
     }
+}
+
+/**
+ * Validates the declared Content-Length against the per-entry cap and the
+ * free-space reserve. Returns the validated size, or null after writing an
+ * appropriate error response so the caller can return immediately.
+ */
+private suspend fun ApplicationCall.validatedSize(
+    maxEntryBytes: Long,
+    spaceGuard: ReservedSpaceGuard,
+): Long? {
+    val declaredSize = request.contentLength()
+    if (declaredSize == null || declaredSize < 0) {
+        respond(HttpStatusCode.LengthRequired)
+        return null
+    }
+    // Reject oversize before reading the body — short-circuits Ktor's
+    // Expect: 100-continue handshake so the client does not upload.
+    if (declaredSize > maxEntryBytes) {
+        respond(HttpStatusCode.PayloadTooLarge)
+        return null
+    }
+    // Reject before reading the body when accepting it would breach the
+    // free-space/inode reserve — short-circuits Expect: 100-continue.
+    if (!spaceGuard.hasRoomFor(declaredSize)) {
+        respond(HttpStatusCode.ServiceUnavailable)
+        return null
+    }
+    return declaredSize
 }
 
 private suspend fun ApplicationCall.authorize(

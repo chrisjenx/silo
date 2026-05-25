@@ -18,11 +18,14 @@ package com.chrisjenx.silo.server
 import com.chrisjenx.silo.server.audit.AuditLog
 import com.chrisjenx.silo.server.audit.NoopAuditLog
 import com.chrisjenx.silo.server.auth.AuthSettings
+import com.chrisjenx.silo.storage.EvictionEngine
 import com.chrisjenx.silo.storage.MetadataIndex
 import com.chrisjenx.silo.storage.fs.FileSystemCacheStore
+import com.chrisjenx.silo.storage.fs.FreeSpace
 import com.chrisjenx.silo.storage.fs.ReconciliationEngine
 import com.chrisjenx.silo.storage.fs.StartupRecovery
 import com.chrisjenx.silo.storage.fs.StorageRootLock
+import com.chrisjenx.silo.storage.fs.UnlimitedFreeSpace
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 
 /**
@@ -41,4 +44,6 @@ class SiloServices(
     val meterRegistry: PrometheusMeterRegistry,
     val auditLog: AuditLog = NoopAuditLog,
     val startupRecovery: StartupRecovery? = null,
+    val freeSpace: FreeSpace = UnlimitedFreeSpace,
+    val evictionEngine: EvictionEngine? = null,
 )

@@ -147,8 +147,14 @@ jobs:
           }
           USERS
           JAR="$(ls modules/server/build/libs/silo-*-all.jar | head -1)"
+          # Disable the free-space/inode reserve on the small /dev/shm tmpfs so
+          # the default 5 GB / 100k reserve doesn't reject CI PUTs. Production
+          # keeps the documented defaults.
           SILO_PORT=8080 SILO_STORAGE_ROOT="$DATA" \
-            java -Dsilo.auth.users-file="$PWD/ci-users.conf" -jar "$JAR" &
+            java -Dsilo.auth.users-file="$PWD/ci-users.conf" \
+              -Dsilo.storage.reserved-free-bytes=0 \
+              -Dsilo.storage.reserved-free-inodes=0 \
+              -jar "$JAR" &
           SILO_PID=$!
           trap 'kill "$SILO_PID" 2>/dev/null || true' EXIT
 
@@ -203,8 +209,14 @@ jobs:
           }
           USERS
           JAR="$(ls modules/server/build/libs/silo-*-all.jar | head -1)"
+          # Disable the free-space/inode reserve on the small /dev/shm tmpfs so
+          # the default 5 GB / 100k reserve doesn't reject CI PUTs. Production
+          # keeps the documented defaults.
           SILO_PORT=8080 SILO_STORAGE_ROOT="$DATA" \
-            java -Dsilo.auth.users-file="$PWD/ci-users.conf" -jar "$JAR" &
+            java -Dsilo.auth.users-file="$PWD/ci-users.conf" \
+              -Dsilo.storage.reserved-free-bytes=0 \
+              -Dsilo.storage.reserved-free-inodes=0 \
+              -jar "$JAR" &
           SILO_PID=$!
           trap 'kill "$SILO_PID" 2>/dev/null || true' EXIT
 
