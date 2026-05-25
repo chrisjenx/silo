@@ -53,6 +53,13 @@ class SqliteMetadataIndex private constructor(
     private val log = LoggerFactory.getLogger(SqliteMetadataIndex::class.java)
     private val touchQueue = ConcurrentHashMap<String, Long>()
     private val writeLock = Mutex()
+
+    // The upsert fires on every PUT (the hot write path). Prepare it once and
+    // reuse it under [writeLock] (which serialises all writers) instead of
+    // re-parsing the SQL per call — cuts per-PUT CPU and tail latency. It is a
+    // var because VACUUM rejects open statements, so [vacuum] closes and
+    // re-prepares it across the rebuild (also under [writeLock]).
+    private var upsertStatement = connection.prepareStatement(SQL_UPSERT)
     private val checkpoints = AtomicLong(0)
     private val vacuums = AtomicLong(0)
 
@@ -68,15 +75,14 @@ class SqliteMetadataIndex private constructor(
     ): Unit =
         withContext(ioDispatcher) {
             writeLock.withLock {
-                connection.prepareStatement(SQL_UPSERT).use { ps ->
-                    ps.setString(1, key.value)
-                    ps.setLong(2, sizeBytes)
-                    ps.setLong(3, insertedAtMs)
-                    ps.setLong(4, lastAccessMs)
-                    if (contentSha256 == null) ps.setNull(5, java.sql.Types.BLOB) else ps.setBytes(5, contentSha256)
-                    ps.setInt(6, EntryStatus.COMMITTED.code)
-                    ps.executeUpdate()
-                }
+                val ps = upsertStatement
+                ps.setString(1, key.value)
+                ps.setLong(2, sizeBytes)
+                ps.setLong(3, insertedAtMs)
+                ps.setLong(4, lastAccessMs)
+                if (contentSha256 == null) ps.setNull(5, java.sql.Types.BLOB) else ps.setBytes(5, contentSha256)
+                ps.setInt(6, EntryStatus.COMMITTED.code)
+                ps.executeUpdate()
                 touchQueue.remove(key.value)
                 Unit
             }
@@ -197,7 +203,15 @@ class SqliteMetadataIndex private constructor(
         withContext(ioDispatcher) {
             writeLock.withLock {
                 flushBlocking()
-                connection.createStatement().use { it.execute("VACUUM") }
+                // VACUUM rejects open prepared statements ("SQL statements in
+                // progress"); close the cached upsert across the rebuild and
+                // re-prepare it after.
+                upsertStatement.close()
+                try {
+                    connection.createStatement().use { it.execute("VACUUM") }
+                } finally {
+                    upsertStatement = connection.prepareStatement(SQL_UPSERT)
+                }
                 vacuums.incrementAndGet()
                 Unit
             }
@@ -223,6 +237,7 @@ class SqliteMetadataIndex private constructor(
         } catch (e: java.sql.SQLException) {
             log.warn("error flushing SqliteMetadataIndex during close", e)
         }
+        runCatching { upsertStatement.close() }
         connection.close()
     }
 
