@@ -222,7 +222,13 @@ fun Application.installSiloModule(services: SiloServices) {
             )
         }
         staticResources(remotePath = "/admin", basePackage = "static/admin", index = "index.html")
-        cacheRoutes(services.cacheStore, services.auth, services.config.maxEntryBytes)
+        val spaceGuard =
+            com.chrisjenx.silo.storage.fs.ReservedSpaceGuard(
+                free = services.freeSpace,
+                reservedFreeBytes = services.config.reservedFreeBytes,
+                reservedFreeInodes = services.config.reservedFreeInodes,
+            )
+        cacheRoutes(services.cacheStore, services.auth, services.config.maxEntryBytes, spaceGuard)
         adminRoutes(
             reconciliationEngine = services.reconciliationEngine,
             cacheStore = services.cacheStore,
