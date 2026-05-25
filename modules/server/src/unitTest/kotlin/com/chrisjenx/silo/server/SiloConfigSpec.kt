@@ -52,4 +52,14 @@ class SiloConfigSpec : StringSpec({
         c.maxAgeDays shouldBe 9
         c.maxDeletesPerCycle shouldBe 10
     }
+
+    "load applies the eviction sweep-interval default and override" {
+        SiloConfig.load(com.typesafe.config.ConfigFactory.empty())
+            .evictionSweepIntervalSeconds shouldBe 60L
+        SiloConfig.load(
+            com.typesafe.config.ConfigFactory.parseString(
+                "silo.eviction.sweep-interval-seconds = 5",
+            ),
+        ).evictionSweepIntervalSeconds shouldBe 5L
+    }
 })
