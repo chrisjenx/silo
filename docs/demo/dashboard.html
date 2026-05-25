@@ -2,11 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>silo — dashboard</title>
+    <title>silo — dashboard (demo)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" href="/admin/favicon.svg" />
-    <link rel="stylesheet" href="/admin/silo-tokens.css" />
-    <script src="/admin/silo-tokens.js" defer></script>
+    <link rel="icon" href="favicon.svg" />
+    <!--
+      Demo copy of modules/server/src/main/resources/static/admin/dashboard.html.
+      Only paths are relative and demo-mock.js is loaded first so window.fetch
+      returns simulated data. Keep the body in sync with the real page.
+    -->
+    <link rel="stylesheet" href="silo-tokens.css" />
+    <script src="demo-mock.js"></script>
+    <script src="silo-tokens.js" defer></script>
     <style>
       html, body { margin: 0; }
       body {
@@ -56,7 +62,7 @@
     <h1>silo · dashboard</h1>
     <p class="meta">
       <span id="root"></span> · <span id="fs"></span> ·
-      <a href="/admin/">home</a>
+      <a href="index.html">home</a>
     </p>
     <div class="grid">
       <div class="tile"><div class="label">entries</div><div class="value" id="entries">—</div></div>

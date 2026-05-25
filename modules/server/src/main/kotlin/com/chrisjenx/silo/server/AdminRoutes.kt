@@ -209,12 +209,21 @@ private suspend fun ApplicationCall.handleConfig(
           "server": { "port": ${config.port}, "host": "${config.host}" },
           "storage": {
             "root": "${config.storageRoot}",
+            "maxBytes": ${config.maxBytes},
             "maxEntryBytes": ${config.maxEntryBytes},
+            "maxEntries": ${config.maxEntries},
+            "reservedFreeBytes": ${config.reservedFreeBytes},
+            "reservedFreeInodes": ${config.reservedFreeInodes},
+            "verifySha256OnRead": ${config.verifySha256OnRead},
             "allowUnsupportedFs": ${config.allowUnsupportedFs}
+          },
+          "eviction": {
+            "maxAgeDays": ${config.maxAgeDays},
+            "maxDeletesPerCycle": ${config.maxDeletesPerCycle}
           },
           "auth": {
             "anonymousRead": ${config.anonymousRead},
-            "usersConfPath": "${config.usersConfPath ?: ""}"
+            "oidcEnabled": ${config.oidc != null}
           }
         }
         """.trimIndent()

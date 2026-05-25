@@ -2,11 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>silo — admin</title>
+    <title>silo — admin (demo)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" href="/admin/favicon.svg" />
-    <link rel="stylesheet" href="/admin/silo-tokens.css" />
-    <script src="/admin/silo-tokens.js" defer></script>
+    <link rel="icon" href="favicon.svg" />
+    <!-- Demo copy of static/admin/index.html — relative paths, simulated data. -->
+    <link rel="stylesheet" href="silo-tokens.css" />
+    <script src="demo-mock.js"></script>
+    <script src="silo-tokens.js" defer></script>
     <style>
       html, body { margin: 0; }
       body {
@@ -46,8 +48,8 @@
     </pre>
     <div class="frame silo-frame">
       <p>
-        <a href="/admin/dashboard.html"><strong>open dashboard ▸</strong></a>
-        · admin spa pending — kobweb scaffold lands in a follow-up.
+        <a href="dashboard.html"><strong>open dashboard ▸</strong></a>
+        · <a href="about.html">about</a>
       </p>
       <p class="theme-picker">
         theme:
@@ -55,14 +57,17 @@
         <button onclick="siloSetTheme('amber')">amber</button>
         <button onclick="siloSetTheme('paper')">paper</button>
       </p>
-      <p class="dim">in the meantime, the json endpoints are live:</p>
-      <ul>
-        <li><a href="/api/stats">/api/stats</a></li>
-        <li><a href="/api/storage">/api/storage</a></li>
-        <li><a href="/api/config">/api/config</a></li>
-        <li><a href="/metrics">/metrics</a></li>
-        <li><a href="/health">/health</a> · <a href="/ready">/ready</a></li>
-      </ul>
+      <p class="dim">
+        this is the real admin UI running against a simulated data layer —
+        every number is mocked client-side, there is no backend behind it.
+      </p>
+      <p class="dim">
+        in a running Silo the same pages read live JSON from
+        <code>/api/stats</code>, <code>/api/storage</code> and
+        <code>/api/config</code>, plus Prometheus <code>/metrics</code> and
+        <code>/health</code> · <code>/ready</code>.
+      </p>
+      <p><a href="https://github.com/chrisjenx/silo">← back to the project</a></p>
     </div>
   </body>
 </html>

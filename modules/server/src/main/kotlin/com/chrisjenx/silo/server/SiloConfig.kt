@@ -37,6 +37,14 @@ data class SiloConfig(
     val auditDir: Path? = null,
     val sqliteCheckpointIntervalSeconds: Long = 300,
     val sqliteVacuumIntervalSeconds: Long = 86_400,
+    // Capacity + eviction caps (documented in docs/limits.md). Surfaced via
+    // /api/config and the admin dashboard; enforcement wiring tracked separately.
+    val maxBytes: Long = 100L * 1024 * 1024 * 1024,
+    val maxEntries: Long = 1_000_000,
+    val reservedFreeBytes: Long = 5L * 1024 * 1024 * 1024,
+    val reservedFreeInodes: Long = 100_000,
+    val maxAgeDays: Int = 30,
+    val maxDeletesPerCycle: Int = 1_000,
 ) {
     companion object {
         /** Reads `silo.*` keys from [config], falling back to documented defaults. */
@@ -85,6 +93,12 @@ data class SiloConfig(
                     } else {
                         null
                     },
+                maxBytes = config.optLong("silo.storage.max-bytes", 100L * 1024 * 1024 * 1024),
+                maxEntries = config.optLong("silo.storage.max-entries", 1_000_000L),
+                reservedFreeBytes = config.optLong("silo.storage.reserved-free-bytes", 5L * 1024 * 1024 * 1024),
+                reservedFreeInodes = config.optLong("silo.storage.reserved-free-inodes", 100_000L),
+                maxAgeDays = config.optInt("silo.eviction.max-age-days", 30),
+                maxDeletesPerCycle = config.optInt("silo.eviction.max-deletes-per-cycle", 1_000),
             )
 
         /** Parses `silo.auth.oidc.*`; returns null unless `enabled = true`. */
