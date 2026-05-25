@@ -1,11 +1,38 @@
 ---
-title: Limits
-nav_order: 5
+title: Requirements and Limits
+nav_order: 3
 ---
 
-# Silo — OS, Filesystem, and Ktor Limits
+# Silo — Requirements and Limits
 
-What Silo expects from its host, and what to set if you're tuning for scale.
+What hardware Silo needs, what it expects from its host, and what to set if
+you're tuning for scale.
+
+## Hardware requirements
+
+Silo is deliberately light — the JVM heap is the floor and everything else is
+disk. It runs comfortably on a small VM or a shared CI node.
+
+| Resource | Minimum | Recommended |
+|---|---|---|
+| CPU | 1 vCPU | 2–4 vCPU — request handling is virtual-thread based and scales with cores |
+| RAM | 512 MB | 1 GB — RSS stays < 200 MB idle and < 500 MB under 100 rps mixed traffic |
+| JVM | 21+ | 21+ (virtual threads, current Ktor; no native image needed) |
+| Disk | `max-bytes` + reserve | Local SSD/NVMe on ext4/xfs — **not** NFS (see below) |
+| Inodes | `max-entries` + reserve | One inode per cache entry; size the filesystem for the entry cap |
+| Network | 100 Mbps | 1 Gbps+ for large CI fleets pushing big task outputs |
+
+**Sizing the disk.** Budget `silo.storage.max-bytes` for the cache itself plus
+`silo.storage.reserved-free-bytes` (default 5 GB) of headroom — Silo starts
+returning `503` once free space drops below the reserve, so a 100 GB cache
+wants ~110 GB of volume. At high entry counts inodes run out before bytes do;
+size the filesystem accordingly (see [Disk / inode exhaustion](#disk--inode-exhaustion)).
+
+**Memory.** The Docker image launches with
+`-XX:+UseG1GC -XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError`, so the heap
+tracks the container's memory limit — give the container ≥ 768 MB under load and
+the JVM sizes itself. PUT/GET bodies are streamed, never buffered, so peak
+memory stays flat regardless of artifact size.
 
 ## Recommended setup at a glance
 
