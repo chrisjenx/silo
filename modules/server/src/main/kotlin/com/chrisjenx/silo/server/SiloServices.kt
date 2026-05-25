@@ -18,6 +18,7 @@ package com.chrisjenx.silo.server
 import com.chrisjenx.silo.server.audit.AuditLog
 import com.chrisjenx.silo.server.audit.NoopAuditLog
 import com.chrisjenx.silo.server.auth.AuthSettings
+import com.chrisjenx.silo.storage.EvictionEngine
 import com.chrisjenx.silo.storage.MetadataIndex
 import com.chrisjenx.silo.storage.fs.FileSystemCacheStore
 import com.chrisjenx.silo.storage.fs.FreeSpace
@@ -44,4 +45,5 @@ class SiloServices(
     val auditLog: AuditLog = NoopAuditLog,
     val startupRecovery: StartupRecovery? = null,
     val freeSpace: FreeSpace = UnlimitedFreeSpace,
+    val evictionEngine: EvictionEngine? = null,
 )
