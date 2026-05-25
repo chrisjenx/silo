@@ -104,7 +104,7 @@ git commit -s -m "feat: add HEAD route"
 
 ## Release process
 
-Maintainers only. See `docs/repo-setup.md` and the `release.yml` workflow.
+Maintainers only. See the `release.yml` workflow.
 
 ## Questions
 

@@ -1,6 +1,6 @@
 ---
 title: TLS & reverse proxy
-nav_order: 4
+nav_order: 6
 ---
 
 # Silo — TLS and Reverse Proxy

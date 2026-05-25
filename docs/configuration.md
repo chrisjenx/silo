@@ -1,6 +1,6 @@
 ---
 title: Configuration
-nav_order: 2
+nav_order: 4
 ---
 
 # Silo — Configuration Reference

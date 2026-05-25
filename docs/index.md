@@ -53,12 +53,11 @@ Health is at `/health`, Prometheus metrics at `/metrics`, and a live stats strea
 | Page | What's in it |
 |---|---|
 | [Live demo](demo.md) | The admin dashboard running on simulated data — no install |
+| [Requirements & limits](limits.md) | Hardware sizing + OS / filesystem / Ktor guard rails |
 | [Configuration](configuration.md) | HOCON reference + every `SILO_*` env var |
 | [Operations](operations.md) | Runbook: monitoring, tuning, backup/restore, audit log |
 | [TLS & reverse proxy](tls.md) | Caddy, nginx, Traefik, AWS ALB, Cloudflare Tunnel |
-| [Limits](limits.md) | OS / filesystem / Ktor guard rails |
 | [Design language](design.md) | Admin SPA design notes |
-| [Repository setup](repo-setup.md) | Reproduce the repo's settings on a fork |
 
 ## Status
 

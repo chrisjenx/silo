@@ -1,6 +1,6 @@
 ---
 title: Design language
-nav_order: 6
+nav_order: 7
 ---
 
 # Silo — Design Language

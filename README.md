@@ -117,7 +117,7 @@ Silo is configured via HOCON (`application.conf`) with environment-variable over
 | `SILO_USERS_FILE` | `silo.auth.users-file` | `/etc/silo/users.conf` | bcrypt user list |
 | `SILO_ANONYMOUS_READ` | `silo.auth.anonymous-read` | `true` | Allow unauthenticated GET/HEAD |
 
-Full reference: [`docs/configuration.md`](docs/configuration.md). Limits and OS notes: [`docs/limits.md`](docs/limits.md).
+Full reference: [`docs/configuration.md`](docs/configuration.md). Hardware, requirements, and limits: [`docs/limits.md`](docs/limits.md).
 
 ## Documentation
 
@@ -125,7 +125,7 @@ The full docs site is published at **<https://chrisjenx.github.io/silo/>**.
 
 - [Live dashboard demo](https://chrisjenx.github.io/silo/demo/dashboard.html) — the admin UI on simulated data, no install
 - [Configuration reference](https://chrisjenx.github.io/silo/configuration.html) — every HOCON key and env override
-- [Operational limits & OS notes](https://chrisjenx.github.io/silo/limits.html) — caps, FS, `ulimit`, NFS
+- [Requirements & limits](https://chrisjenx.github.io/silo/limits.html) — hardware sizing, caps, FS, `ulimit`, NFS
 - [Reverse proxy & TLS](https://chrisjenx.github.io/silo/tls.html) — termination at a proxy, inline TLS opt-in
 - [Operations runbook](https://chrisjenx.github.io/silo/operations.html) — backup, restore, recovery
 - [Design language](https://chrisjenx.github.io/silo/design.html) — the retro-terminal admin UI spec

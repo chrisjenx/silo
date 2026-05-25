@@ -188,8 +188,7 @@ docker buildx build --platform linux/amd64,linux/arm64 -t silo:dev .
 
 - Bootstrap plan: `~/.claude-work/plans/project-goal-and-archetecture-mossy-naur.md`
 - Design language: `docs/design.md`
-- Operational limits: `docs/limits.md`
+- Requirements and limits: `docs/limits.md`
 - HOCON config reference: `docs/configuration.md`
 - Reverse-proxy / TLS: `docs/tls.md`
 - Backup, restore, runbook: `docs/operations.md`
-- Repo settings checklist: `docs/repo-setup.md`
