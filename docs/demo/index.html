@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>silo — admin (demo)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <!-- Demo copy of static/admin/index.html — relative paths, simulated data. -->
+    <link rel="stylesheet" href="silo-tokens.css" />
+    <script src="demo-mock.js"></script>
+    <script src="silo-tokens.js" defer></script>
+    <style>
+      html, body { margin: 0; }
+      body {
+        font-family: ui-monospace, "JetBrains Mono", "Menlo", monospace;
+        font-size: 14px;
+        line-height: 1.4;
+        padding: 2rem;
+      }
+      pre { color: var(--silo-dim); white-space: pre; }
+      .frame {
+        border: 1px solid var(--silo-border);
+        padding: 1.5rem 2rem;
+        max-width: 78ch;
+      }
+      a { color: var(--silo-fg); }
+      .dim { color: var(--silo-dim); }
+      .theme-picker { margin-top: 1rem; }
+      .theme-picker button {
+        background: transparent;
+        color: var(--silo-fg);
+        border: 1px solid var(--silo-border);
+        font-family: inherit;
+        font-size: inherit;
+        padding: 0.25rem 0.75rem;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <pre>
+███████╗██╗██╗      ██████╗
+██╔════╝██║██║     ██╔═══██╗
+███████╗██║██║     ██║   ██║
+╚════██║██║██║     ██║   ██║
+███████║██║███████╗╚██████╔╝
+╚══════╝╚═╝╚══════╝ ╚═════╝
+    </pre>
+    <div class="frame silo-frame">
+      <p>
+        <a href="dashboard.html"><strong>open dashboard ▸</strong></a>
+        · <a href="about.html">about</a>
+      </p>
+      <p class="theme-picker">
+        theme:
+        <button onclick="siloSetTheme('phosphor')">phosphor</button>
+        <button onclick="siloSetTheme('amber')">amber</button>
+        <button onclick="siloSetTheme('paper')">paper</button>
+      </p>
+      <p class="dim">
+        this is the real admin UI running against a simulated data layer —
+        every number is mocked client-side, there is no backend behind it.
+      </p>
+      <p class="dim">
+        in a running Silo the same pages read live JSON from
+        <code>/api/stats</code>, <code>/api/storage</code> and
+        <code>/api/config</code>, plus Prometheus <code>/metrics</code> and
+        <code>/health</code> · <code>/ready</code>.
+      </p>
+      <p><a href="https://github.com/chrisjenx/silo">← back to the project</a></p>
+    </div>
+  </body>
+</html>

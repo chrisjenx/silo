@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>silo — about (demo)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <!-- Demo copy of static/admin/about.html — relative paths, simulated data. -->
+    <link rel="stylesheet" href="silo-tokens.css" />
+    <script src="demo-mock.js"></script>
+    <script src="silo-tokens.js" defer></script>
+    <style>
+      html, body { margin: 0; }
+      body {
+        font-family: ui-monospace, "JetBrains Mono", "Menlo", monospace;
+        font-size: 14px;
+        line-height: 1.4;
+        padding: 1.5rem;
+        max-width: 80ch;
+      }
+      pre { color: var(--silo-dim); white-space: pre; }
+      .row { display: grid; grid-template-columns: 14ch 1fr; gap: 0.5rem; }
+      .row .k { color: var(--silo-dim); }
+      a { color: var(--silo-fg); }
+    </style>
+  </head>
+  <body>
+    <pre>
+███████╗██╗██╗      ██████╗
+██╔════╝██║██║     ██╔═══██╗
+███████╗██║██║     ██║   ██║
+╚════██║██║██║     ██║   ██║
+███████║██║███████╗╚██████╔╝
+╚══════╝╚═╝╚══════╝ ╚═════╝
+    </pre>
+    <p><em>cache where you keep your grain.</em></p>
+    <div class="row">
+      <span class="k">version</span><span id="version">…</span>
+      <span class="k">commit</span><span id="commit">…</span>
+      <span class="k">uptime</span><span id="uptime">…</span>
+      <span class="k">license</span><span>Apache-2.0</span>
+      <span class="k">source</span><a href="https://github.com/chrisjenx/silo">github.com/chrisjenx/silo</a>
+    </div>
+    <p>
+      <a href="index.html">home</a> ·
+      <a href="dashboard.html">dashboard</a>
+    </p>
+    <script>
+      // The server header carries the version, so a HEAD request to /health
+      // surfaces it without needing a JSON endpoint.
+      fetch("/health").then(r => {
+        const v = (r.headers.get("server") || "silo/dev").replace(/^silo\//, "");
+        document.getElementById("version").textContent = v;
+      });
+      // Commit SHA + uptime ride on /api/config and /api/stats later; for
+      // now show placeholders the SPA fills in.
+      document.getElementById("commit").textContent = "—";
+      document.getElementById("uptime").textContent = "—";
+    </script>
+  </body>
+</html>

@@ -52,6 +52,7 @@ Health is at `/health`, Prometheus metrics at `/metrics`, and a live stats strea
 
 | Page | What's in it |
 |---|---|
+| [Live demo](demo.md) | The admin dashboard running on simulated data — no install |
 | [Configuration](configuration.md) | HOCON reference + every `SILO_*` env var |
 | [Operations](operations.md) | Runbook: monitoring, tuning, backup/restore, audit log |
 | [TLS & reverse proxy](tls.md) | Caddy, nginx, Traefik, AWS ALB, Cloudflare Tunnel |

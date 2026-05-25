@@ -99,7 +99,8 @@ Silo ships a single-page admin dashboard at `/admin`. The design language is int
 **terminal** — phosphor green on black, ASCII box-drawing, Unicode block sparklines, no
 chart libraries. See [`docs/design.md`](docs/design.md) for the full spec.
 
-*Screenshot lands once the Dashboard page ships (tracked in the Walking Skeleton milestone).*
+**▶ [Try the live demo](https://chrisjenx.github.io/silo/demo/dashboard.html)** — the real admin
+UI running on simulated data, right in your browser. No install, no backend.
 
 ## Configuration
 
@@ -122,6 +123,7 @@ Full reference: [`docs/configuration.md`](docs/configuration.md). Limits and OS 
 
 The full docs site is published at **<https://chrisjenx.github.io/silo/>**.
 
+- [Live dashboard demo](https://chrisjenx.github.io/silo/demo/dashboard.html) — the admin UI on simulated data, no install
 - [Configuration reference](https://chrisjenx.github.io/silo/configuration.html) — every HOCON key and env override
 - [Operational limits & OS notes](https://chrisjenx.github.io/silo/limits.html) — caps, FS, `ulimit`, NFS
 - [Reverse proxy & TLS](https://chrisjenx.github.io/silo/tls.html) — termination at a proxy, inline TLS opt-in
