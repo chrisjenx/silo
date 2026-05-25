@@ -58,20 +58,10 @@ class EvictionEnforcementSpec : BehaviorSpec({
                             )
                         val job = EvictionScheduler(engine::sweep, Duration.ofMillis(SWEEP_INTERVAL_MS)).launchIn(this)
 
-                        val nowMs = System.currentTimeMillis()
                         repeat(ENTRY_COUNT) { i ->
                             val key = CacheKey.requireValid(TestKeys.valid(seed = i.toLong()))
                             val body = ByteArray(ENTRY_BODY_BYTES)
                             store.put(key, body.size.toLong(), Buffer().apply { write(body) })
-                            // FileSystemCacheStore does not update the metadata index on put;
-                            // we mirror the write so EvictionEngine can see the byte totals.
-                            index.upsert(
-                                key = key,
-                                sizeBytes = body.size.toLong(),
-                                insertedAtMs = nowMs,
-                                lastAccessMs = nowMs + i,
-                                contentSha256 = null,
-                            )
                         }
 
                         var bytes = Long.MAX_VALUE

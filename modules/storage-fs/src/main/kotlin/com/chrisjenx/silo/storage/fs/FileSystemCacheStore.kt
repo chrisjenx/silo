@@ -221,6 +221,13 @@ class FileSystemCacheStore(
 
             if (fsyncDirOnRename) fsyncDirectory(shardDir)
 
+            // Record the entry in the metadata index (atomic-write protocol
+            // step 6) so /api/stats and the eviction engine see it. Done after
+            // the rename: a crash in between leaves an orphan blob that
+            // reconciliation re-indexes, so this ordering stays crash-safe.
+            val now = System.currentTimeMillis()
+            metadataIndex?.upsert(key, sizeBytes = size, insertedAtMs = now, lastAccessMs = now)
+
             puts.incrementAndGet()
             PutOutcome.Stored(size)
         }
