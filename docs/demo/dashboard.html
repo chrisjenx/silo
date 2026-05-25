@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <title>silo — dashboard (demo)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" href="data:," />
+    <link rel="icon" href="favicon.svg" />
     <!--
       Demo copy of modules/server/src/main/resources/static/admin/dashboard.html.
       Only paths are relative and demo-mock.js is loaded first so window.fetch
@@ -48,6 +48,14 @@
       }
       .meta { color: var(--silo-dim); font-size: 12px; }
       a { color: var(--silo-fg); }
+      .cfg {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(22ch, 1fr));
+        gap: 0.25rem 1.5rem;
+        margin-top: 0.5rem;
+      }
+      .crow { display: flex; justify-content: space-between; gap: 1rem; }
+      .crow .ck { color: var(--silo-dim); }
     </style>
   </head>
   <body>
@@ -68,6 +76,10 @@
       <div class="label">hit rate · last 12 samples</div>
       <div class="sparkline" id="spark">▁▁▁▁▁▁▁▁▁▁▁▁</div>
       <div class="meta" id="hitRate">hit rate: —</div>
+    </div>
+    <div class="tile" style="margin-top:1rem;">
+      <div class="label">limits · configured caps</div>
+      <div class="cfg" id="cfg"><span class="meta">loading…</span></div>
     </div>
 
     <script>
@@ -108,7 +120,33 @@
           document.getElementById("hitRate").textContent = "stats fetch failed: " + e.message;
         }
       }
+      async function loadConfig() {
+        try {
+          const c = await (await fetch("/api/config")).json();
+          const s = c.storage || {};
+          const e = c.eviction || {};
+          const num = n => (n == null ? "—" : Number(n).toLocaleString());
+          const rows = [
+            ["max total size", fmtBytes(s.maxBytes)],
+            ["max entry size", fmtBytes(s.maxEntryBytes)],
+            ["max entries", num(s.maxEntries)],
+            ["reserved free space", fmtBytes(s.reservedFreeBytes)],
+            ["reserved free inodes", num(s.reservedFreeInodes)],
+            ["max age", e.maxAgeDays == null ? "—" : e.maxAgeDays + " days"],
+            ["max deletes / cycle", num(e.maxDeletesPerCycle)],
+            ["verify sha-256 on read", s.verifySha256OnRead ? "on" : "off"],
+          ];
+          document.getElementById("cfg").innerHTML = rows
+            .map(([k, v]) =>
+              '<div class="crow"><span class="ck">' + k + "</span><span>" + v + "</span></div>")
+            .join("");
+        } catch (err) {
+          document.getElementById("cfg").textContent = "config fetch failed: " + err.message;
+        }
+      }
+
       refresh();
+      loadConfig();
       setInterval(refresh, 5_000);
     </script>
   </body>

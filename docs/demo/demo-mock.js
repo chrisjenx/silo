@@ -55,12 +55,22 @@
     reservedFreeBytes: 5_368_709_120,
   };
 
+  // Mirrors the server's GET /api/config shape so the dashboard's limits
+  // panel renders the same caps it would against a real Silo.
   const config = {
-    "silo.storage.max-bytes": 107_374_182_400,
-    "silo.storage.max-entries": 1_000_000,
-    "silo.storage.max-entry-bytes": 2_147_483_648,
-    "silo.eviction.max-age-days": 30,
-    "silo.auth.anonymous-read": true,
+    server: { port: 8080, host: "0.0.0.0" },
+    storage: {
+      root: "/var/lib/silo",
+      maxBytes: 107_374_182_400,
+      maxEntryBytes: 2_147_483_648,
+      maxEntries: 1_000_000,
+      reservedFreeBytes: 5_368_709_120,
+      reservedFreeInodes: 100_000,
+      verifySha256OnRead: false,
+      allowUnsupportedFs: false,
+    },
+    eviction: { maxAgeDays: 30, maxDeletesPerCycle: 1_000 },
+    auth: { anonymousRead: true, oidcEnabled: false },
   };
 
   function json(obj) {
