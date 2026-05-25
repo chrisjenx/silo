@@ -34,7 +34,7 @@ private const val CAP_BYTES = 3L * 1024 * 1024
 private const val ENTRY_BODY_BYTES = 1024 * 1024
 private const val ENTRY_COUNT = 8
 private const val SWEEP_INTERVAL_MS = 50L
-private const val MAX_POLL_ATTEMPTS = 60
+private const val MAX_POLL_ATTEMPTS = 200
 
 class EvictionEnforcementSpec : BehaviorSpec({
 

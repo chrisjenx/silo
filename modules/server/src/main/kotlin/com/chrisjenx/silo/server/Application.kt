@@ -91,6 +91,11 @@ fun Application.module() {
             root = config.storageRoot,
             maxEntryBytes = config.maxEntryBytes,
             metadataIndex = metadataIndex,
+            // Defense in depth: the route-level ReservedSpaceGuard rejects pre-body
+            // off a ~1s-cached reading; the store re-checks live usable space at
+            // write time so a burst that drains the reserve between the two is
+            // still caught.
+            reservedFreeBytes = config.reservedFreeBytes,
             verifySha256OnRead = config.verifySha256OnRead,
         )
     startSqliteMaintenance(this, metadataIndex, config)
