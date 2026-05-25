@@ -8,6 +8,13 @@ import { silo, key, authHeader, bytes } from './lib.js';
 http.setResponseCallback(http.expectedStatuses({ min: 200, max: 204 }, 404));
 
 const HOT_SIZE = 1000;
+// Bound the cold working set so the on-disk footprint is duration-independent.
+// 1 MiB payloads × this many distinct keys is the worst-case storage Silo
+// holds; the bench writes to a tmpfs (/dev/shm, ~8 GB on CI) and eviction is
+// not yet wired, so an unbounded cold space would fill the disk on the 5 m run
+// and Silo would (correctly) return 503 on ENOSPC — failing the gate for an
+// environmental reason, not a real regression. 5000 × 1 MiB ≈ 5 GB.
+const COLD_SIZE = 5000;
 const PAYLOAD = bytes(1024 * 1024).buffer; // 1 MiB
 
 export const options = {
@@ -29,7 +36,7 @@ export default function () {
     if (auth) headers['Authorization'] = auth;
 
     const hot = Math.random() < 0.9;
-    const k = key(hot ? Math.floor(Math.random() * HOT_SIZE) : Math.floor(Math.random() * 1000000));
+    const k = key(hot ? Math.floor(Math.random() * HOT_SIZE) : Math.floor(Math.random() * COLD_SIZE));
 
     if (Math.random() < 0.7) {
         const res = http.get(`${silo.baseUrl}/cache/${k}`);
