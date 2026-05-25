@@ -41,7 +41,11 @@ class ReservedSpaceGuard(
     private val reservedFreeBytes: Long,
     private val reservedFreeInodes: Long,
 ) {
-    fun hasRoomFor(incomingBytes: Long): Boolean =
-        free.usableBytes() - incomingBytes >= reservedFreeBytes &&
+    fun hasRoomFor(incomingBytes: Long): Boolean {
+        // Nothing to enforce when both reserves are disabled — skip the probe
+        // (avoids a per-PUT free-space syscall / df subprocess fork).
+        if (reservedFreeBytes <= 0 && reservedFreeInodes <= 0) return true
+        return free.usableBytes() - incomingBytes >= reservedFreeBytes &&
             free.freeInodes() >= reservedFreeInodes
+    }
 }

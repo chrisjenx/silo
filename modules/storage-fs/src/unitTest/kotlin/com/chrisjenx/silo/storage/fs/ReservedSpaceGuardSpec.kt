@@ -58,4 +58,15 @@ class ReservedSpaceGuardSpec : StringSpec({
             )
         guard.hasRoomFor(1) shouldBe false
     }
+
+    "short-circuits without probing free space when both reserves are disabled" {
+        val exploding =
+            object : FreeSpace {
+                override fun usableBytes(): Long = error("must not probe when reserve is disabled")
+
+                override fun freeInodes(): Long = error("must not probe when reserve is disabled")
+            }
+        ReservedSpaceGuard(exploding, reservedFreeBytes = 0, reservedFreeInodes = 0)
+            .hasRoomFor(Long.MAX_VALUE) shouldBe true
+    }
 })
