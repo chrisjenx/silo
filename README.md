@@ -15,7 +15,10 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Kotlin](https://img.shields.io/badge/kotlin-2.x-7F52FF?logo=kotlin)](https://kotlinlang.org)
 [![JVM](https://img.shields.io/badge/JVM-21%2B-orange)](https://adoptium.net)
+[![Docs](https://img.shields.io/badge/docs-chrisjenx.github.io%2Fsilo-blue)](https://chrisjenx.github.io/silo/)
 ![Status](https://img.shields.io/badge/status-alpha-orange)
+
+📖 **Documentation:** <https://chrisjenx.github.io/silo/>
 
 ## What is Silo?
 
@@ -114,6 +117,16 @@ Silo is configured via HOCON (`application.conf`) with environment-variable over
 | `SILO_ANONYMOUS_READ` | `silo.auth.anonymous-read` | `true` | Allow unauthenticated GET/HEAD |
 
 Full reference: [`docs/configuration.md`](docs/configuration.md). Limits and OS notes: [`docs/limits.md`](docs/limits.md).
+
+## Documentation
+
+The full docs site is published at **<https://chrisjenx.github.io/silo/>**.
+
+- [Configuration reference](https://chrisjenx.github.io/silo/configuration.html) — every HOCON key and env override
+- [Operational limits & OS notes](https://chrisjenx.github.io/silo/limits.html) — caps, FS, `ulimit`, NFS
+- [Reverse proxy & TLS](https://chrisjenx.github.io/silo/tls.html) — termination at a proxy, inline TLS opt-in
+- [Operations runbook](https://chrisjenx.github.io/silo/operations.html) — backup, restore, recovery
+- [Design language](https://chrisjenx.github.io/silo/design.html) — the retro-terminal admin UI spec
 
 ## Comparison
 
