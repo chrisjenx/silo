@@ -38,28 +38,33 @@ import java.util.concurrent.atomic.AtomicLong
  * SQLite-backed [MetadataIndex] with a single file persisted at [dbPath].
  *
  * The connection is opened in WAL mode and tuned per the bootstrap plan:
- * write amplification on hot reads is collapsed by buffering [touch] calls
- * in memory and flushing them in a single batched UPDATE statement on
- * [flush] (called periodically by the server and explicitly during
- * [close]).
+ * write amplification on hot reads is collapsed by buffering both [upsert]
+ * and [touch] calls in memory and flushing them in a single batched
+ * transaction on [flush] (called periodically by the server and explicitly
+ * during [close]).
  *
  * The implementation uses plain JDBC — no ORM — to keep the dependency
  * surface small and let us audit every query.
  */
+
+private data class PendingUpsert(
+    val sizeBytes: Long,
+    val insertedAtMs: Long,
+    val lastAccessMs: Long,
+    val contentSha256: ByteArray?,
+)
+
+private const val UPSERT_FLUSH_THRESHOLD = 256
+
 class SqliteMetadataIndex private constructor(
     private val connection: Connection,
     private val ioDispatcher: CoroutineDispatcher,
 ) : MetadataIndex {
     private val log = LoggerFactory.getLogger(SqliteMetadataIndex::class.java)
     private val touchQueue = ConcurrentHashMap<String, Long>()
+    private val upsertQueue = ConcurrentHashMap<String, PendingUpsert>()
     private val writeLock = Mutex()
 
-    // The upsert fires on every PUT (the hot write path). Prepare it once and
-    // reuse it under [writeLock] (which serialises all writers) instead of
-    // re-parsing the SQL per call — cuts per-PUT CPU and tail latency. It is a
-    // var because VACUUM rejects open statements, so [vacuum] closes and
-    // re-prepares it across the rebuild (also under [writeLock]).
-    private var upsertStatement = connection.prepareStatement(SQL_UPSERT)
     private val checkpoints = AtomicLong(0)
     private val vacuums = AtomicLong(0)
 
@@ -72,21 +77,14 @@ class SqliteMetadataIndex private constructor(
         insertedAtMs: Long,
         lastAccessMs: Long,
         contentSha256: ByteArray?,
-    ): Unit =
-        withContext(ioDispatcher) {
-            writeLock.withLock {
-                val ps = upsertStatement
-                ps.setString(1, key.value)
-                ps.setLong(2, sizeBytes)
-                ps.setLong(3, insertedAtMs)
-                ps.setLong(4, lastAccessMs)
-                if (contentSha256 == null) ps.setNull(5, java.sql.Types.BLOB) else ps.setBytes(5, contentSha256)
-                ps.setInt(6, EntryStatus.COMMITTED.code)
-                ps.executeUpdate()
-                touchQueue.remove(key.value)
-                Unit
-            }
+    ) {
+        upsertQueue[key.value] = PendingUpsert(sizeBytes, insertedAtMs, lastAccessMs, contentSha256)
+        // A fresh upsert supersedes any pending touch for the same key.
+        touchQueue.remove(key.value)
+        if (upsertQueue.size >= UPSERT_FLUSH_THRESHOLD) {
+            withContext(ioDispatcher) { writeLock.withLock { flushBlocking() } }
         }
+    }
 
     override suspend fun touch(
         key: CacheKey,
@@ -95,27 +93,37 @@ class SqliteMetadataIndex private constructor(
         touchQueue.merge(key.value, accessedAtMs) { prev, next -> if (next > prev) next else prev }
     }
 
-    override suspend fun get(key: CacheKey): EntryRecord? =
-        withContext(ioDispatcher) {
+    override suspend fun get(key: CacheKey): EntryRecord? {
+        // Fast path: if there is a buffered upsert, return it directly so
+        // callers on the PUT hot path see read-after-write without a round-trip
+        // to SQLite. Pending touches are intentionally not merged here — they
+        // are opaque until flush, matching the existing touch-buffering contract.
+        upsertQueue[key.value]?.let { p ->
+            return EntryRecord(key, p.sizeBytes, p.insertedAtMs, p.lastAccessMs, p.contentSha256, EntryStatus.COMMITTED)
+        }
+        return withContext(ioDispatcher) {
             connection.prepareStatement(SQL_SELECT).use { ps ->
                 ps.setString(1, key.value)
                 ps.executeQuery().use { rs -> if (rs.next()) rs.toRecord() else null }
             }
         }
+    }
 
     override suspend fun delete(key: CacheKey): Boolean =
         withContext(ioDispatcher) {
             writeLock.withLock {
+                val hadBuffered = upsertQueue.remove(key.value) != null
+                touchQueue.remove(key.value)
                 connection.prepareStatement(SQL_DELETE).use { ps ->
                     ps.setString(1, key.value)
-                    touchQueue.remove(key.value)
-                    ps.executeUpdate() > 0
+                    ps.executeUpdate() > 0 || hadBuffered
                 }
             }
         }
 
     override suspend fun lruVictims(limit: Int): List<EntryRecord> =
         withContext(ioDispatcher) {
+            writeLock.withLock { flushBlocking() }
             connection.prepareStatement(SQL_LRU).use { ps ->
                 ps.setInt(1, EntryStatus.COMMITTED.code)
                 ps.setInt(2, limit)
@@ -132,6 +140,7 @@ class SqliteMetadataIndex private constructor(
         limit: Int,
     ): List<EntryRecord> =
         withContext(ioDispatcher) {
+            writeLock.withLock { flushBlocking() }
             connection.prepareStatement(SQL_EXPIRED).use { ps ->
                 ps.setInt(1, EntryStatus.COMMITTED.code)
                 ps.setLong(2, olderThanMs)
@@ -149,6 +158,7 @@ class SqliteMetadataIndex private constructor(
         limit: Int,
     ): List<CacheKey> =
         withContext(ioDispatcher) {
+            writeLock.withLock { flushBlocking() }
             connection.prepareStatement(SQL_PAGE_KEYS).use { ps ->
                 ps.setInt(1, EntryStatus.COMMITTED.code)
                 ps.setString(2, after ?: "")
@@ -163,13 +173,10 @@ class SqliteMetadataIndex private constructor(
 
     override suspend fun aggregate(): MetadataAggregate =
         withContext(ioDispatcher) {
+            writeLock.withLock { flushBlocking() }
             connection.prepareStatement(SQL_AGGREGATE).use { ps ->
                 ps.executeQuery().use { rs ->
-                    if (rs.next()) {
-                        MetadataAggregate(rs.getLong(1), rs.getLong(2))
-                    } else {
-                        MetadataAggregate(0, 0)
-                    }
+                    if (rs.next()) MetadataAggregate(rs.getLong(1), rs.getLong(2)) else MetadataAggregate(0, 0)
                 }
             }
         }
@@ -203,15 +210,7 @@ class SqliteMetadataIndex private constructor(
         withContext(ioDispatcher) {
             writeLock.withLock {
                 flushBlocking()
-                // VACUUM rejects open prepared statements ("SQL statements in
-                // progress"); close the cached upsert across the rebuild and
-                // re-prepare it after.
-                upsertStatement.close()
-                try {
-                    connection.createStatement().use { it.execute("VACUUM") }
-                } finally {
-                    upsertStatement = connection.prepareStatement(SQL_UPSERT)
-                }
+                connection.createStatement().use { it.execute("VACUUM") }
                 vacuums.incrementAndGet()
                 Unit
             }
@@ -237,30 +236,51 @@ class SqliteMetadataIndex private constructor(
         } catch (e: java.sql.SQLException) {
             log.warn("error flushing SqliteMetadataIndex during close", e)
         }
-        runCatching { upsertStatement.close() }
         connection.close()
     }
 
     private fun flushBlocking() {
-        if (touchQueue.isEmpty()) return
-        val snapshot = HashMap(touchQueue)
-        touchQueue.keys.removeAll(snapshot.keys)
+        if (upsertQueue.isEmpty() && touchQueue.isEmpty()) return
+        val upserts = HashMap(upsertQueue)
+        upsertQueue.keys.removeAll(upserts.keys)
+        val touches = HashMap(touchQueue)
+        touchQueue.keys.removeAll(touches.keys)
         connection.autoCommit = false
         try {
-            connection.prepareStatement(SQL_TOUCH).use { ps ->
-                snapshot.forEach { (key, ts) ->
-                    ps.setLong(1, ts)
-                    ps.setString(2, key)
-                    ps.addBatch()
-                }
-                ps.executeBatch()
-            }
+            if (upserts.isNotEmpty()) batchUpserts(upserts)
+            if (touches.isNotEmpty()) batchTouches(touches)
             connection.commit()
         } catch (e: java.sql.SQLException) {
             connection.rollback()
             throw e
         } finally {
             connection.autoCommit = true
+        }
+    }
+
+    private fun batchUpserts(upserts: Map<String, PendingUpsert>) {
+        connection.prepareStatement(SQL_UPSERT).use { ps ->
+            upserts.forEach { (key, p) ->
+                ps.setString(1, key)
+                ps.setLong(2, p.sizeBytes)
+                ps.setLong(3, p.insertedAtMs)
+                ps.setLong(4, p.lastAccessMs)
+                if (p.contentSha256 == null) ps.setNull(5, java.sql.Types.BLOB) else ps.setBytes(5, p.contentSha256)
+                ps.setInt(6, EntryStatus.COMMITTED.code)
+                ps.addBatch()
+            }
+            ps.executeBatch()
+        }
+    }
+
+    private fun batchTouches(touches: Map<String, Long>) {
+        connection.prepareStatement(SQL_TOUCH).use { ps ->
+            touches.forEach { (key, ts) ->
+                ps.setLong(1, ts)
+                ps.setString(2, key)
+                ps.addBatch()
+            }
+            ps.executeBatch()
         }
     }
 
