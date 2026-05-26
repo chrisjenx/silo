@@ -59,13 +59,15 @@ docker start silo
 
 Take a filesystem-level snapshot of the volume while Silo is still running. SQLite WAL guarantees the snapshot is recoverable. Stream the snapshot to your backup target.
 
-### Option 3 — read-only Silo + rsync
+### Option 3 — brief stop + rsync (incremental)
+
+Silo has no read-only mode, so for an incremental `rsync` backup stop the
+container for the copy, then restart it:
 
 ```bash
-# Toggle storage to read-only via env override and restart
-docker restart -e SILO_READONLY=true silo
+docker stop silo
 rsync -a --delete /srv/silo-data/ user@backup:/backups/silo/
-docker restart silo
+docker start silo
 ```
 
 ### What **not** to do
@@ -78,7 +80,7 @@ docker restart silo
 1. Stop Silo.
 2. Untar / rsync the backup into the data root.
 3. Verify the lockfile is gone (`rm -f /srv/silo-data/.silo.lock` if needed — only if you're sure no other Silo is running).
-4. Start Silo. On startup it scans for orphan `.tmp.*` files (>10 min old) and removes them. The first reconcile reconciles SQLite against the disk.
+4. Start Silo. On startup it scans for orphan `.tmp.*` files (>10 min old) and removes them. To reconcile the SQLite index against the restored blobs, trigger a reconcile via `POST /api/storage/reconcile` (or rely on the lazy on-read self-heal as keys are requested).
 
 ## Logging
 
@@ -103,29 +105,28 @@ Key metrics to watch:
 
 | Metric | Alert when |
 |---|---|
-| `silo_storage_errors_total{kind="enospc"}` | rate > 0 |
-| `silo_storage_errors_total{kind="reserved_free_bytes"}` | rate > 0 (acceptance dropped due to disk threshold) |
-| `silo_drift_detected_total` | rate spike — investigate external interference |
-| `silo_recovery_orphans_cleaned_total` | non-zero after a boot — the node crashed mid-PUT previously; expected, but a steady rate hints at frequent unclean shutdowns |
+| `silo_drift_detected_total{kind="missing_blob"}` | rate spike — SQLite hit but blob gone; external interference |
 | `silo_corruption_detected_total` | non-zero — investigate immediately |
-| `silo_request_duration_seconds{quantile="0.99"}` | > performance budget |
-| `silo_store_size_bytes` | trending toward `max-bytes` faster than eviction runs |
-| `silo_eviction_queue_depth` | non-zero for sustained periods → eviction can't keep up |
+| `silo_recovery_orphans_cleaned_total` | non-zero after a boot — the node crashed mid-PUT previously; expected, but a steady rate hints at frequent unclean shutdowns |
+| `silo_store_evictions_total{reason="byte_cap"}` | sustained high rate → cache undersized for the working set |
+| `silo_storage_cross_fs_rename_total` | non-zero — `tmp` and `cas/` are on different filesystems (atomicity lost); fix the layout |
+| `ktor_http_server_requests_seconds{quantile="0.99"}` | > performance budget |
+
+JVM/process metrics (`jvm_memory_*`, `jvm_gc_*`, `process_cpu_usage`, …) are also exported via the Micrometer JVM binders. The live counters (entryCount, bytesStored, hits, misses, puts, evictions, hitRate) are additionally available as JSON at `/api/stats`.
 
 ## Tuning
 
 ### Cache too small
 
-Symptoms: high `silo_cache_misses_total` rate, low hit ratio.
+Symptoms: low `hitRate` in `/api/stats` (high `misses` relative to `hits`).
 
-- Raise `silo.storage.max-bytes` and `silo.storage.max-entries`. Make sure the host has room.
-- Raise `silo.eviction.max-age-days` if hot artifacts are aging out.
-- Inspect `/api/storage` for top-N largest entries — sometimes one bloated artifact dominates.
+- Raise `silo.storage.max-bytes` / `silo.storage.max-entries` (env `SILO_MAX_BYTES` / `SILO_MAX_ENTRIES`). Make sure the host has room.
+- Raise `silo.eviction.max-age-days` (env `SILO_MAX_AGE_DAYS`) if hot artifacts are aging out.
+- Watch `silo_store_evictions_total{reason="byte_cap"}` — a high rate means the byte cap is forcing out entries you're about to re-request.
 
 ### Slow PUTs
 
-- Verify `fsync-on-write` and `fsync-dir-on-rename` are tolerable on your storage. SSD + battery-backed: yes. Spinning rust + sync writes: prepare for pain.
-- Check `Dispatchers.IO.limitedParallelism` and `silo.server.max-concurrent-disk-ops` — raise on fast NVMe.
+- Silo fsyncs the blob and (by default) the shard directory on every PUT for crash-safety. On slow/spinning storage that sync cost dominates PUT latency — use an SSD-backed volume for the data root.
 - Inspect proxy buffering settings. `nginx` without `proxy_request_buffering off` will appear slow.
 
 ### SQLite growth
@@ -143,20 +144,20 @@ Symptoms: high `silo_cache_misses_total` rate, low hit ratio.
 If admins, scripts, or container orchestrators are deleting files under `cas/` out of band:
 
 - The first GET on a deleted blob self-heals (SQLite row is purged, 404 returned). `silo_drift_detected_total{kind="missing_blob"}` increments.
-- The hourly reconcile sweep cleans up the rest. Force a sweep with:
+- To reconcile the rest in one pass (re-index orphan blobs, drop orphan rows, sweep stale `.tmp.*`), trigger the on-demand reconcile — there is no automatic periodic sweep:
 
   ```bash
   curl -fsS -X POST -u admin:... http://localhost:8080/api/storage/reconcile
   ```
 
-- If your eviction needs are stronger than Silo's TTL+LRU, do **not** `rm` blobs directly. Use the admin API delete endpoint (`POST /api/storage/delete/{key}`) so the metadata index stays in sync.
+- There is no per-key delete API. To shrink the cache, lower `silo.storage.max-bytes` / `silo.eviction.max-age-days` and let TTL+LRU eviction reclaim space; if you must `rm` blobs out of band, run the reconcile above afterwards so the metadata index stays in sync.
 
 ## Disaster recovery
 
 Lost the data volume entirely?
 
 - There's nothing to recover from a build cache — it's content-addressed and rebuildable. CI will re-populate it on the next run.
-- If you had a backup, restore it (see above). The first reconcile may take a few minutes on multi-million-entry caches; the cache is serving requests throughout.
+- If you had a backup, restore it (see above). A reconcile (`POST /api/storage/reconcile`) may take a few minutes on multi-million-entry caches; the cache is serving requests throughout.
 
 ## Two Silo instances on one data root
 
