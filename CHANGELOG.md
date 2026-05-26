@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/chrisjenx/silo/compare/v0.1.0...v0.1.1) (2026-05-26)
+
+
+### Bug Fixes
+
+* unblock v0.1.0 release pipeline (cosign pin + changelog lint) ([#137](https://github.com/chrisjenx/silo/issues/137)) ([328959b](https://github.com/chrisjenx/silo/commit/328959b0abd862ab323d280817885df68769943e))
+
 ## 0.1.0 (2026-05-26)
 
 
