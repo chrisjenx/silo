@@ -19,6 +19,7 @@ package com.chrisjenx.silo.server
 
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import kotlin.system.exitProcess
 
 /**
  * Ktor entry point. Run with `./gradlew :server:run` or `java -jar silo.jar`.
@@ -26,11 +27,15 @@ import io.ktor.server.netty.Netty
  * configured `silo.server.{host,port}`.
  *
  * `--version` / `-V` prints `silo <version> (<sha>) jvm <javaVersion>` and exits.
+ * `hash-password` reads a password (no echo) and prints its bcrypt hash.
  */
 fun main(args: Array<String>) {
     if (args.any { it == "--version" || it == "-V" }) {
         println(SiloVersion.line())
         return
+    }
+    if (args.firstOrNull() == "hash-password") {
+        exitProcess(runHashPassword())
     }
     val config = SiloConfig.load(com.typesafe.config.ConfigFactory.load())
     embeddedServer(

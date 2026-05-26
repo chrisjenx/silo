@@ -11,6 +11,7 @@ How to run, back up, monitor, and recover a Silo deployment.
 
 1. Decide your storage root. Production: a dedicated mount, xfs or ext4 with `dir_index`, **not** NFS. See `docs/limits.md`.
 2. Pre-create `users.conf` with bcrypt hashes (or leave anonymous-read on if your cache is on a private network).
+   The user list must be nested under `silo` — see [the users file format](configuration.md#users-file-format).
 
    ```bash
    java -jar silo.jar hash-password

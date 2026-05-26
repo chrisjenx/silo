@@ -219,20 +219,26 @@ silo {
 
 ## Users file format
 
-`/etc/silo/users.conf`:
+`/etc/silo/users.conf` — the user list **must** be nested under `silo`. A bare
+top-level `users = [ ... ]` loads zero users (every authenticated PUT then 401s):
 
 ```hocon
-users = [
-  { username = "ci-writer",  password-hash = "$2a$12$...", roles = ["read", "write"] }
-  { username = "dev-reader", password-hash = "$2a$12$...", roles = ["read"] }
-]
+silo {
+  users = [
+    { username = "ci-writer",  password-hash = "$2a$12$...", roles = ["read", "write"] }
+    { username = "dev-reader", password-hash = "$2a$12$...", roles = ["read"] }
+  ]
+}
 ```
 
-Generate a bcrypt hash with:
+Generate a bcrypt (`$2a$12$…`) hash with the bundled subcommand:
 
 ```bash
+# interactive: prompts for the password twice (no echo) to catch typos
 java -jar silo.jar hash-password
-# prompts for password (not echoed) → prints "$2a$12$..."
+
+# headless (CI/scripts): read a single line from stdin
+echo "$PASSWORD" | java -jar silo.jar hash-password
 ```
 
 ## Persistence layout
