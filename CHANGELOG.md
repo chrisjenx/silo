@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/chrisjenx/silo/compare/v0.1.2...v0.1.3) (2026-05-26)
+
+
+### Bug Fixes
+
+* wire documented env vars + reconcile docs with shipped code ([#141](https://github.com/chrisjenx/silo/issues/141)) ([4d6675e](https://github.com/chrisjenx/silo/commit/4d6675e5f5a977a18480b97f66213dd9db8b1340))
+
 ## [0.1.2](https://github.com/chrisjenx/silo/compare/v0.1.1...v0.1.2) (2026-05-26)
 
 
