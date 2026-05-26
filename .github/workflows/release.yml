@@ -110,8 +110,13 @@ jobs:
         env:
           COSIGN_EXPERIMENTAL: "1"
           DIGEST: ${{ steps.build.outputs.digest }}
+          # metadata-action emits a NEWLINE-separated tag list. Pass it through
+          # the environment and iterate line-by-line — interpolating it straight
+          # into `for tag in ...` splits on the newlines and breaks the shell.
+          TAGS: ${{ steps.meta.outputs.tags }}
         run: |
-          for tag in ${{ steps.meta.outputs.tags }}; do
+          printf '%s\n' "$TAGS" | while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
             cosign sign --yes "${tag}@${DIGEST}"
           done
 
