@@ -62,4 +62,36 @@ class SiloConfigSpec : StringSpec({
             ),
         ).evictionSweepIntervalSeconds shouldBe 5L
     }
+
+    // Guards the env-var -> HOCON-key wiring in the bundled application.conf:
+    // every documented SILO_* override must land on the key SiloConfig reads.
+    // A typo'd ${?SILO_*} path would silently no-op (the bug this fixes).
+    "bundled application.conf wires the documented env-var overrides to the right keys" {
+        val overrides =
+            ConfigFactory.parseString(
+                """
+                SILO_STORAGE_ROOT = "/srv/silo-x"
+                SILO_MAX_BYTES = 11
+                SILO_MAX_ENTRIES = 12
+                SILO_MAX_ENTRY_BYTES = 16
+                SILO_RESERVED_FREE_BYTES = 13
+                SILO_RESERVED_FREE_INODES = 14
+                SILO_MAX_AGE_DAYS = 15
+                SILO_ANONYMOUS_READ = false
+                SILO_USERS_FILE = "/etc/silo/users.conf"
+                """.trimIndent(),
+            )
+        val resolved =
+            overrides.withFallback(ConfigFactory.parseResources("application.conf")).resolve()
+        val c = SiloConfig.load(resolved)
+        c.storageRoot.toString() shouldBe "/srv/silo-x"
+        c.maxBytes shouldBe 11L
+        c.maxEntries shouldBe 12L
+        c.maxEntryBytes shouldBe 16L
+        c.reservedFreeBytes shouldBe 13L
+        c.reservedFreeInodes shouldBe 14L
+        c.maxAgeDays shouldBe 15
+        c.anonymousRead shouldBe false
+        c.usersConfPath?.toString() shouldBe "/etc/silo/users.conf"
+    }
 })
