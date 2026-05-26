@@ -49,7 +49,7 @@
   }
 
   const storage = {
-    root: "/var/lib/silo",
+    root: "/data",
     fsType: "ext4",
     maxBytes: 107_374_182_400,
     reservedFreeBytes: 5_368_709_120,
@@ -60,7 +60,7 @@
   const config = {
     server: { port: 8080, host: "0.0.0.0" },
     storage: {
-      root: "/var/lib/silo",
+      root: "/data",
       maxBytes: 107_374_182_400,
       maxEntryBytes: 2_147_483_648,
       maxEntries: 1_000_000,

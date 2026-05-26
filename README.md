@@ -108,13 +108,13 @@ Silo is configured via HOCON (`application.conf`) with environment-variable over
 
 | Env var | HOCON key | Default | Purpose |
 |---|---|---|---|
-| `SILO_PORT` | `ktor.deployment.port` | `8080` | HTTP listen port |
-| `SILO_STORAGE_ROOT` | `silo.storage.filesystem.root` | `/var/lib/silo` | Data directory |
-| `SILO_MAX_BYTES` | `silo.storage.max-bytes` | `107374182400` (100 GB) | Total cache size cap |
+| `SILO_PORT` | `silo.server.port` | `8080` | HTTP listen port |
+| `SILO_STORAGE_ROOT` | `silo.storage.root` | `/data` | Data directory |
+| `SILO_MAX_BYTES` | `silo.storage.max-bytes` | `107374182400` (100 GiB) | Total cache size cap |
 | `SILO_MAX_ENTRIES` | `silo.storage.max-entries` | `1000000` | Total entry cap |
-| `SILO_MAX_ENTRY_BYTES` | `silo.storage.max-entry-bytes` | `2147483648` (2 GB) | Per-entry cap |
+| `SILO_MAX_ENTRY_BYTES` | `silo.storage.max-entry-bytes` | `2147483648` (2 GiB) | Per-entry cap |
 | `SILO_MAX_AGE_DAYS` | `silo.eviction.max-age-days` | `30` | TTL for untouched entries |
-| `SILO_USERS_FILE` | `silo.auth.users-file` | `/etc/silo/users.conf` | bcrypt user list |
+| `SILO_USERS_FILE` | `silo.auth.users-file` | _(unset)_ | bcrypt user list |
 | `SILO_ANONYMOUS_READ` | `silo.auth.anonymous-read` | `true` | Allow unauthenticated GET/HEAD |
 
 Full reference: [`docs/configuration.md`](docs/configuration.md). Hardware, requirements, and limits: [`docs/limits.md`](docs/limits.md).
@@ -146,13 +146,14 @@ The full docs site is published at **<https://chrisjenx.github.io/silo/>**.
 | Replication | Planned (v0.3+) | Yes |
 | Resource footprint | ~150 MB RAM idle | ~1 GB+ |
 
-*Not affiliated with or endorsed by Gradle Inc. or Gradle Build Tool®.*
+_Not affiliated with or endorsed by Gradle Inc. or Gradle Build Tool®._
 
 ## Status
 
-Alpha. Tracking towards v0.1 walking-skeleton — see the
-[v0.1 milestone](https://github.com/chrisjenx/silo/milestone/1) and
-[v0.2 hardening](https://github.com/chrisjenx/silo/milestone/2).
+Alpha. The v0.1 walking-skeleton is complete and **released** (latest
+[`v0.1.x`](https://github.com/chrisjenx/silo/releases)); work continues on
+[v0.2 hardening](https://github.com/chrisjenx/silo/milestone/2) (S3/GCS
+backends, compression, replication).
 
 ## Building from source
 

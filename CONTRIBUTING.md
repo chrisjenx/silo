@@ -72,13 +72,8 @@ Breaking changes: append `!` (`feat!: rename CacheStore.put → CacheStore.store
 
 `release-please` reads commits to generate the changelog. **Never edit `CHANGELOG.md` by hand.**
 
-## DCO sign-off
-
-All commits must be signed off. The DCO is at <https://developercertificate.org/>.
-
-```bash
-git commit -s -m "feat: add HEAD route"
-```
+A [commitlint workflow](.github/workflows/commitlint.yml) validates the PR title
+against the rules above on every pull request.
 
 ## Code style
 

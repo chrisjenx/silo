@@ -6,16 +6,21 @@
 #   write   — allowed to PUT (typically CI)
 #
 # Use bcrypt hashes only. Never commit real hashes to a public repo.
+#
+# The user list MUST be nested under `silo` — a bare top-level `users = [...]`
+# loads zero users (Silo reads `silo.users`), and every authenticated PUT 401s.
 
-users = [
-  {
-    username      = "ci-writer"
-    password-hash = "$2a$12$REPLACE_WITH_REAL_HASH"
-    roles         = ["read", "write"]
-  }
-  {
-    username      = "dev-reader"
-    password-hash = "$2a$12$REPLACE_WITH_REAL_HASH"
-    roles         = ["read"]
-  }
-]
+silo {
+  users = [
+    {
+      username      = "ci-writer"
+      password-hash = "$2a$12$REPLACE_WITH_REAL_HASH"
+      roles         = ["read", "write"]
+    }
+    {
+      username      = "dev-reader"
+      password-hash = "$2a$12$REPLACE_WITH_REAL_HASH"
+      roles         = ["read"]
+    }
+  ]
+}

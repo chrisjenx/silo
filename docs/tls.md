@@ -5,8 +5,8 @@ nav_order: 6
 
 # Silo — TLS and Reverse Proxy
 
-Silo speaks plain HTTP on its listen port by default. **Terminate TLS at a reverse proxy.**
-Inline HTTPS is supported but not the recommended path.
+Silo speaks plain HTTP on its listen port. **Terminate TLS at a reverse proxy** —
+this is the supported path. Inline HTTPS is **not wired in the current build** (see below).
 
 ## Why reverse-proxy by default
 
@@ -235,21 +235,12 @@ Caveats:
 - Authenticate at Silo (HTTP Basic) and/or with Cloudflare Access in front —
   Silo never trusts `X-Forwarded-*` for auth.
 
-## Inline TLS (opt-in)
+## Inline TLS (not currently wired)
 
-If you must run TLS in-process:
-
-```hocon
-ktor.deployment {
-  sslPort = 8443
-  sslKeyStore = /etc/silo/keystore.p12
-  sslKeyStorePassword = ${SILO_KEYSTORE_PASSWORD}
-  sslPrivateKeyPassword = ${SILO_KEY_PASSWORD}
-  sslKeyAlias = silo
-}
-```
-
-You are now responsible for rotating the certificate. Silo does **not** integrate ACME.
+Silo's entrypoint starts Netty with a plain HTTP connector only, so the standard
+Ktor `ktor.deployment.ssl*` keys are **ignored** by the shipped build — setting
+them does nothing. Inline TLS is tracked as a future option; until then, terminate
+TLS at a reverse proxy (above). Silo does not integrate ACME.
 
 ## What Silo expects from the proxy
 

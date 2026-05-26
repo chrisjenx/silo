@@ -89,14 +89,13 @@ memory stays flat regardless of artifact size.
 
 ## Disk / inode exhaustion
 
-Silo monitors free space and inode count continuously. On any write that would breach a reserve, it returns HTTP `503` and emits `silo_storage_errors_total{kind="reserved_free_bytes|reserved_free_inodes"}`.
+Silo checks free space and inode count before accepting a PUT. A write that would drop free space below `silo.storage.reserved-free-bytes` or free inodes below `silo.storage.reserved-free-inodes` is rejected with HTTP `503` before the body is read.
 
 If the kernel returns `ENOSPC` (no blocks) or `EDQUOT` (quota) anyway, Silo:
 
 1. Unreserves the in-flight allocation
 2. Logs ERROR with key prefix and bytes
 3. Returns `503` to the client
-4. Increments `silo_storage_errors_total{kind="enospc|edquot"}`
 
 Cross-filesystem renames (storage root spans two mounts) trigger `AtomicMoveNotSupportedException`. Silo catches it, falls back to copy+delete with a WARN log, and tells you to move the root onto a single filesystem.
 
@@ -112,10 +111,11 @@ Cross-filesystem renames (storage root spans two mounts) trigger `AtomicMoveNotS
 |---|---|---|
 | `SO_BACKLOG` | 512 | Bursty CI traffic overruns the default 128 |
 | `requestReadTimeout` | 60s | Slowloris mitigation |
-| `Dispatchers.IO.limitedParallelism` | 64 | Storage ops gated; semaphore also limits to `silo.server.max-concurrent-disk-ops` |
 | PUT body handling | `call.receiveChannel()` | Never `receive<ByteArray>` — would buffer the whole body |
 | `Expect: 100-continue` | Honored out of the box | Auth/size pre-check responds `100` or rejects without reading the body |
 | HTTP/1.1 keep-alive | Unlimited per connection | Ktor default; CI clients reuse heavily |
+
+The PUT-streaming and `Expect: 100-continue` behavior above is in force today. The `SO_BACKLOG` / `requestReadTimeout` socket tunings are intended hardening targets — the shipped build starts Netty with engine defaults; tightening these is tracked for a follow-up.
 
 ## Filesystem watchers — **not used**
 
@@ -123,9 +123,9 @@ Silo deliberately does not watch the storage tree with `WatchService` / inotify:
 
 - inotify drops events silently under load (above ~8K events/sec on default tuning).
 - macOS `FSEvents` and Linux inotify behave differently; cross-platform parity is fragile.
-- The reconciliation sweep (default hourly) plus on-read ENOENT fallback gives stronger self-healing for far less complexity.
+- The on-demand reconciliation sweep (`POST /api/storage/reconcile`) plus the on-read ENOENT fallback gives stronger self-healing for far less complexity.
 
-If you need faster drift detection, lower `silo.reconcile.interval-minutes`. Drift is also detected lazily on every GET.
+Drift is detected lazily on every GET (a missing blob purges its row and returns 404). To force a full pass, trigger the reconcile endpoint — there is no automatic periodic sweep.
 
 ## Performance budget
 
