@@ -102,7 +102,9 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v4
+        # cosign-installer publishes only exact-version tags (no moving v4),
+        # so the major-only @v4 fails to resolve at job setup. Pin the version.
+        uses: sigstore/cosign-installer@v4.1.2
 
       - name: Sign image (keyless)
         env:
