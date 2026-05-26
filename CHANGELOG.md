@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/chrisjenx/silo/compare/v0.1.1...v0.1.2) (2026-05-26)
+
+
+### Bug Fixes
+
+* iterate cosign sign over tags line-by-line ([#139](https://github.com/chrisjenx/silo/issues/139)) ([b12826b](https://github.com/chrisjenx/silo/commit/b12826b86eb8e8beb9f4ee9c371f8c86a0e23da8))
+
 ## [0.1.1](https://github.com/chrisjenx/silo/compare/v0.1.0...v0.1.1) (2026-05-26)
 
 
