@@ -99,7 +99,19 @@ against the rules above on every pull request.
 
 ## Release process
 
-Maintainers only. See the `release.yml` workflow.
+Maintainers only.
+
+1. `release-please` opens a `chore(main): release X.Y.Z` PR from merged
+   Conventional Commits. Merge it to tag `vX.Y.Z` and create the GitHub Release.
+2. Merging that PR auto-publishes (`release.yml`: fat jar, SBOM, multi-arch
+   Docker, cosign signing) **only if** the `RELEASE_PLEASE_PAT` secret is set —
+   a fine-grained PAT scoped to this repo with Contents + Pull requests
+   read/write. Without it, the release-please tag is created by `GITHUB_TOKEN`,
+   which does not trigger `release.yml`; publish manually instead:
+
+   ```bash
+   gh api -X POST repos/<owner>/silo/actions/workflows/release.yml/dispatches -f ref=vX.Y.Z
+   ```
 
 ## Questions
 

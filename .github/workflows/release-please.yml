@@ -14,6 +14,18 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@v5
         with:
+          # Tag/release the PR with a PAT so the push is attributed to a user,
+          # not GITHUB_TOKEN. GitHub suppresses workflow runs from GITHUB_TOKEN
+          # events, so a token-created tag does NOT trigger release.yml — the
+          # publish job (jar/SBOM/Docker/sign) then has to be dispatched by hand.
+          # With RELEASE_PLEASE_PAT set, the tag push triggers release.yml and the
+          # release auto-publishes on merge. Falls back to GITHUB_TOKEN when the
+          # secret is absent (current behaviour: manual dispatch still required).
+          #
+          # Secret: a fine-grained PAT scoped to this repo with
+          # Contents: read/write + Pull requests: read/write, saved as the
+          # Actions secret RELEASE_PLEASE_PAT.
+          token: ${{ secrets.RELEASE_PLEASE_PAT || github.token }}
           release-type: simple
           target-branch: main
           config-file: .release-please-config.json
