@@ -30,16 +30,16 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Build fat jar
-        run: ./gradlew --no-daemon :server:shadowJar -Psilo.commit="${GITHUB_SHA:0:7}"
+        run: ./gradlew --no-daemon :server-update:shadowJar -Psilo.commit="${GITHUB_SHA:0:7}"
 
       - name: Generate SBOM (CycloneDX)
-        run: ./gradlew --no-daemon :server:cyclonedxBom
+        run: ./gradlew --no-daemon :server-update:cyclonedxBom
 
       - name: Compute checksums
         run: |
           mkdir -p dist
-          cp modules/server/build/libs/silo-*-all.jar dist/silo.jar
-          cp modules/server/build/reports/bom.json dist/silo-sbom.cdx.json
+          cp modules/server-update/build/libs/silo-*-all.jar dist/silo.jar
+          cp modules/server-update/build/reports/bom.json dist/silo-sbom.cdx.json
           (cd dist && sha256sum silo.jar silo-sbom.cdx.json > checksums.txt)
 
       # Publish the CycloneDX SBOM to a Dependency-Track instance for
