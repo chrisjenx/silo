@@ -4,12 +4,10 @@ plugins {
     id("silo.ktor-conventions")
     id("silo.testing-conventions")
     alias(libs.plugins.shadow)
-    alias(libs.plugins.cyclonedx)
 }
 
 base {
-    // Artifacts are silo-<version>(-all).jar, not server-*. The Dockerfile
-    // and release.yml glob for silo-*-all.jar.
+    // The slim distributable (Docker): silo-<version>-slim.jar — no :updater/sigstore.
     archivesName.set("silo")
 }
 
@@ -26,18 +24,13 @@ val commitSha: String =
         ?: "unknown"
 
 tasks.named<ShadowJar>("shadowJar") {
-    // Set Main-Class directly rather than via the `application` plugin:
-    // Shadow 8.3.x + application wires startShadowScripts against the
-    // removed `mainClassName` property and breaks `assemble` on Gradle 9.
-    // Main.kt is annotated @file:JvmName("Main").
+    archiveClassifier.set("slim")
     manifest {
         attributes["Main-Class"] = "com.chrisjenx.silo.server.Main"
         attributes["Implementation-Title"] = "silo"
         attributes["Implementation-Version"] = project.version.toString()
         attributes["Implementation-SHA"] = commitSha
     }
-    // Merge META-INF/services so ServiceLoader (BackendFactory), Netty,
-    // and SLF4J provider descriptors survive the fat-jar shading.
     mergeServiceFiles()
 }
 
