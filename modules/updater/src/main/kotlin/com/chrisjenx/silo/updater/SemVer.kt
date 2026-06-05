@@ -34,6 +34,8 @@ data class SemVer(
         }
     }
 
+    override fun toString(): String = if (preRelease == null) "$major.$minor.$patch" else "$major.$minor.$patch-$preRelease"
+
     companion object {
         private val PATTERN = Regex("""^v?(\d+)\.(\d+)\.(\d+)(?:-(.+))?$""")
 

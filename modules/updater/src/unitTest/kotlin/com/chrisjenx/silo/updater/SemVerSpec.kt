@@ -38,4 +38,8 @@ class SemVerSpec : StringSpec({
     "rejects garbage" {
         runCatching { SemVer.parse("not-a-version") }.isFailure shouldBe true
     }
+    "renders as a human-readable version string" {
+        SemVer(0, 1, 3).toString() shouldBe "0.1.3"
+        SemVer(1, 0, 0, "rc1").toString() shouldBe "1.0.0-rc1"
+    }
 })
