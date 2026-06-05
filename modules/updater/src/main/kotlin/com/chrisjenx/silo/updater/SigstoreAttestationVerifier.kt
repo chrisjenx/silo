@@ -40,13 +40,17 @@ import java.io.StringReader
  * If no bundle satisfies every requirement, an [AttestationException] is thrown.
  */
 class SigstoreAttestationVerifier : AttestationVerifier {
-
     private val json = Json { ignoreUnknownKeys = true }
 
     // Each bundle is tried in turn; ANY failure (parse, chain, identity, digest) is non-fatal until
     // every bundle is exhausted, so the broad catch is intentional — we surface the last error.
     @Suppress("TooGenericExceptionCaught")
-    override fun verify(jarSha256Hex: String, bundleJson: String, expectedRepo: String, expectedTag: String) {
+    override fun verify(
+        jarSha256Hex: String,
+        bundleJson: String,
+        expectedRepo: String,
+        expectedTag: String,
+    ) {
         val bundles = extractBundles(bundleJson)
         if (bundles.isEmpty()) {
             throw AttestationException("No attestation bundles returned for sha256:$jarSha256Hex")
@@ -61,9 +65,10 @@ class SigstoreAttestationVerifier : AttestationVerifier {
                 .subjectAlternativeName(StringMatcher.string(expectedSan))
                 .issuer(StringMatcher.string(GITHUB_ACTIONS_OIDC_ISSUER))
                 .build()
-        val options = VerificationOptions.builder()
-            .addCertificateMatchers(certificateMatcher)
-            .build()
+        val options =
+            VerificationOptions.builder()
+                .addCertificateMatchers(certificateMatcher)
+                .build()
 
         // (d) chain to the public-good Fulcio/Rekor trust root.
         val verifier = KeylessVerifier.builder().sigstorePublicDefaults().build()
@@ -105,8 +110,9 @@ class SigstoreAttestationVerifier : AttestationVerifier {
             val root = json.parseToJsonElement(responseJson).jsonObject
             val attestations = root["attestations"]?.jsonArray ?: return emptyList()
             attestations.map { element ->
-                val bundle = element.jsonObject["bundle"] as? JsonObject
-                    ?: throw AttestationException("Attestation entry is missing a 'bundle' object")
+                val bundle =
+                    element.jsonObject["bundle"] as? JsonObject
+                        ?: throw AttestationException("Attestation entry is missing a 'bundle' object")
                 bundle.toString()
             }
         }.getOrElse { cause ->

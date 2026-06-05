@@ -29,7 +29,10 @@ interface ReleaseClient {
     fun fetchText(url: String): String
 
     /** Streams a binary asset to [dest]. */
-    fun download(url: String, dest: Path)
+    fun download(
+        url: String,
+        dest: Path,
+    )
 
     /** Raw GitHub attestation bundle JSON for a jar's `sha256:<hex>` digest. */
     fun attestationBundle(sha256Hex: String): String

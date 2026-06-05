@@ -28,10 +28,15 @@ import java.nio.file.StandardOpenOption
  * back to a non-atomic rename dance (Windows/locked file) with rollback on failure.
  */
 class AtomicJarReplacer(private val fsync: Boolean = true) {
-
     private val log = LoggerFactory.getLogger(AtomicJarReplacer::class.java)
 
-    fun replace(jar: Path, verifiedSource: Path) {
+    // The inner catch is intentionally broad: on ANY failure of the non-atomic replace we must
+    // restore the backup before rethrowing, so the on-disk jar is never left half-written.
+    @Suppress("TooGenericExceptionCaught")
+    fun replace(
+        jar: Path,
+        verifiedSource: Path,
+    ) {
         if (fsync) forceFile(verifiedSource)
         val backup = jar.resolveSibling("${jar.fileName}.bak")
         Files.copy(jar, backup, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES)

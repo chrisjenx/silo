@@ -33,7 +33,6 @@ class GitHubReleaseClient(
             .connectTimeout(Duration.ofSeconds(20))
             .build(),
 ) : ReleaseClient {
-
     override fun latest(includePrerelease: Boolean): Release =
         if (includePrerelease) {
             Release.listFromJson(getString("$apiBase/repos/$repo/releases?per_page=20"))
@@ -43,18 +42,19 @@ class GitHubReleaseClient(
             Release.fromJson(getString("$apiBase/repos/$repo/releases/latest"))
         }
 
-    override fun byTag(tag: String): Release =
-        Release.fromJson(getString("$apiBase/repos/$repo/releases/tags/$tag"))
+    override fun byTag(tag: String): Release = Release.fromJson(getString("$apiBase/repos/$repo/releases/tags/$tag"))
 
     override fun fetchText(url: String): String = getString(url)
 
-    override fun download(url: String, dest: Path) {
+    override fun download(
+        url: String,
+        dest: Path,
+    ) {
         val res = http.send(baseRequest(url).GET().build(), HttpResponse.BodyHandlers.ofFile(dest))
         require(res.statusCode() in 200..299) { "Download failed (${res.statusCode()}) for $url" }
     }
 
-    override fun attestationBundle(sha256Hex: String): String =
-        getString("$apiBase/repos/$repo/attestations/sha256:$sha256Hex")
+    override fun attestationBundle(sha256Hex: String): String = getString("$apiBase/repos/$repo/attestations/sha256:$sha256Hex")
 
     private fun getString(url: String): String {
         val res = http.send(baseRequest(url).GET().build(), HttpResponse.BodyHandlers.ofString())

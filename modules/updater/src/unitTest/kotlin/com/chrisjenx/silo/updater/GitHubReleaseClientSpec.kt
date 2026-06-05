@@ -32,8 +32,11 @@ class GitHubReleaseClientSpec : StringSpec({
         server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         server.createContext("/repos/acme/silo/releases/latest") { ex ->
             sawUserAgent = ex.requestHeaders.getFirst("User-Agent") ?: ""
-            val body = """{"tag_name":"v0.2.0","prerelease":false,"assets":[
-                {"name":"silo.jar","browser_download_url":"http://x/silo.jar"}]}""".trimIndent()
+            val body =
+                """
+                {"tag_name":"v0.2.0","prerelease":false,"assets":[
+                {"name":"silo.jar","browser_download_url":"http://x/silo.jar"}]}
+                """.trimIndent()
             ex.sendResponseHeaders(200, body.toByteArray().size.toLong())
             ex.responseBody.use { it.write(body.toByteArray()) }
         }

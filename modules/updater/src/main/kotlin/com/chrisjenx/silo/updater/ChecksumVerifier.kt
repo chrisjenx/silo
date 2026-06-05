@@ -20,7 +20,6 @@ import java.nio.file.Path
 import java.security.MessageDigest
 
 object ChecksumVerifier {
-
     fun sha256(file: Path): String {
         val digest = MessageDigest.getInstance("SHA-256")
         Files.newInputStream(file).use { input ->
@@ -35,7 +34,10 @@ object ChecksumVerifier {
     }
 
     /** Returns the hex digest listed for [assetName] in `sha256sum`-format text, or null. */
-    fun expectedFor(assetName: String, checksumsTxt: String): String? =
+    fun expectedFor(
+        assetName: String,
+        checksumsTxt: String,
+    ): String? =
         checksumsTxt.lineSequence()
             .mapNotNull { line ->
                 val parts = line.trim().split(Regex("\\s+"), limit = 2)
@@ -44,7 +46,11 @@ object ChecksumVerifier {
             .firstOrNull { it.second == assetName }
             ?.first
 
-    fun matches(file: Path, assetName: String, checksumsTxt: String): Boolean {
+    fun matches(
+        file: Path,
+        assetName: String,
+        checksumsTxt: String,
+    ): Boolean {
         val expected = expectedFor(assetName, checksumsTxt) ?: return false
         return expected.equals(sha256(file), ignoreCase = true)
     }

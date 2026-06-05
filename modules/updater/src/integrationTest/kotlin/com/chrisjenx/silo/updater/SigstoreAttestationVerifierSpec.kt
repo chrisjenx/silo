@@ -20,12 +20,14 @@ import io.kotest.core.spec.style.StringSpec
 
 class SigstoreAttestationVerifierSpec : StringSpec({
 
-    val bundle = SigstoreAttestationVerifierSpec::class.java
-        .getResource("/attestation-v0.1.3.json")?.readText()
-        ?: error("fixture /attestation-v0.1.3.json missing")
-    val digest = SigstoreAttestationVerifierSpec::class.java
-        .getResource("/attestation-v0.1.3.sha256")?.readText()?.trim()
-        ?: error("fixture /attestation-v0.1.3.sha256 missing")
+    val bundle =
+        SigstoreAttestationVerifierSpec::class.java
+            .getResource("/attestation-v0.1.3.json")?.readText()
+            ?: error("fixture /attestation-v0.1.3.json missing")
+    val digest =
+        SigstoreAttestationVerifierSpec::class.java
+            .getResource("/attestation-v0.1.3.sha256")?.readText()?.trim()
+            ?: error("fixture /attestation-v0.1.3.sha256 missing")
 
     "verifies the real provenance bundle for the expected repo + tag" {
         SigstoreAttestationVerifier().verify(digest, bundle, "chrisjenx/silo", "v0.1.3")

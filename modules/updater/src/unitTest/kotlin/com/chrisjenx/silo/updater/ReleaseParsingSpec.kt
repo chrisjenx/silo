@@ -19,12 +19,13 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 
 class ReleaseParsingSpec : StringSpec({
-    val json = """
+    val json =
+        """
         {"tag_name":"v0.2.0","prerelease":false,"assets":[
           {"name":"silo.jar","browser_download_url":"https://example/silo.jar"},
           {"name":"checksums.txt","browser_download_url":"https://example/checksums.txt"}
         ]}
-    """.trimIndent()
+        """.trimIndent()
 
     "maps a GitHub release payload to the domain Release" {
         val r = Release.fromJson(json)

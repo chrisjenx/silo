@@ -33,8 +33,8 @@ data class Release(
         private val json = Json { ignoreUnknownKeys = true }
 
         fun fromJson(text: String): Release = json.decodeFromString<GhRelease>(text).toDomain()
-        fun listFromJson(text: String): List<Release> =
-            json.decodeFromString<List<GhRelease>>(text).mapNotNull { it.toDomainOrNull() }
+
+        fun listFromJson(text: String): List<Release> = json.decodeFromString<List<GhRelease>>(text).mapNotNull { it.toDomainOrNull() }
     }
 }
 
@@ -45,8 +45,7 @@ private data class GhRelease(
     val draft: Boolean = false,
     val assets: List<GhAsset> = emptyList(),
 ) {
-    fun toDomain(): Release =
-        Release(tagName, SemVer.parse(tagName), prerelease, assets.map { ReleaseAsset(it.name, it.url) })
+    fun toDomain(): Release = Release(tagName, SemVer.parse(tagName), prerelease, assets.map { ReleaseAsset(it.name, it.url) })
 
     /** Tolerant variant for list endpoints: skip non-semver tags instead of throwing. */
     fun toDomainOrNull(): Release? = runCatching { toDomain() }.getOrNull()

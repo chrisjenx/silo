@@ -21,7 +21,13 @@ import io.kotest.core.spec.style.StringSpec
 /** Test double reused by UpdaterSpec. */
 class FakeAttestationVerifier(private val fail: Boolean = false) : AttestationVerifier {
     var calls = 0
-    override fun verify(jarSha256Hex: String, bundleJson: String, expectedRepo: String, expectedTag: String) {
+
+    override fun verify(
+        jarSha256Hex: String,
+        bundleJson: String,
+        expectedRepo: String,
+        expectedTag: String,
+    ) {
         calls++
         if (fail) throw AttestationException("forced failure")
     }

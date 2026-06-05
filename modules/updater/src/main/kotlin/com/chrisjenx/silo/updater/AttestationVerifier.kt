@@ -23,7 +23,12 @@ interface AttestationVerifier {
      * @param expectedRepo "owner/name" whose release workflow must be the signer
      * @param expectedTag release tag, e.g. "v0.2.0"
      */
-    fun verify(jarSha256Hex: String, bundleJson: String, expectedRepo: String, expectedTag: String)
+    fun verify(
+        jarSha256Hex: String,
+        bundleJson: String,
+        expectedRepo: String,
+        expectedTag: String,
+    )
 }
 
 class AttestationException(message: String, cause: Throwable? = null) : Exception(message, cause)

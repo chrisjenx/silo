@@ -20,9 +20,13 @@ import java.nio.file.Path
 /** Result of an update attempt. Exhaustive so the CLI maps each case to an exit code + message. */
 sealed interface UpdateOutcome {
     data class UpToDate(val current: SemVer) : UpdateOutcome
+
     data class UpdateAvailable(val current: SemVer, val latest: SemVer) : UpdateOutcome
+
     data class Updated(val from: SemVer, val to: SemVer, val installedAt: Path) : UpdateOutcome
+
     data class RolledBack(val restoredAt: Path) : UpdateOutcome
+
     data class Failed(val reason: String) : UpdateOutcome
 }
 

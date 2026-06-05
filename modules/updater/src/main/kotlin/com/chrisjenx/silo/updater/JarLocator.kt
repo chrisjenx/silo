@@ -22,13 +22,15 @@ import java.nio.file.Path
 data class JarLocated(val path: Path)
 
 object JarLocator {
-
     /**
      * Resolves the jar to replace. [codeSource] defaults to this class's own code source so
      * production callers pass nothing; tests inject a path. Returns [JarLocated] on success or
      * [UpdateOutcome.Failed] describing why self-update can't proceed.
      */
-    fun locate(currentVersion: String, codeSource: Path? = ownCodeSource()): Any {
+    fun locate(
+        currentVersion: String,
+        codeSource: Path? = ownCodeSource(),
+    ): Any {
         if (currentVersion == "dev" || currentVersion.isBlank()) {
             return UpdateOutcome.Failed(
                 "Running an unversioned/dev build (version='$currentVersion'); nothing to update against.",
@@ -51,8 +53,9 @@ object JarLocator {
 
     private fun ownCodeSource(): Path? =
         runCatching {
-            val uri = JarLocator::class.java.protectionDomain?.codeSource?.location?.toURI()
-                ?: return null
+            val uri =
+                JarLocator::class.java.protectionDomain?.codeSource?.location?.toURI()
+                    ?: return null
             Path.of(uri)
         }.getOrNull()
 }
