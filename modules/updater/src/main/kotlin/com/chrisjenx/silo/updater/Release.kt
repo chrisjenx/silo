@@ -47,8 +47,8 @@ private data class GhRelease(
 ) {
     fun toDomain(): Release = Release(tagName, SemVer.parse(tagName), prerelease, assets.map { ReleaseAsset(it.name, it.url) })
 
-    /** Tolerant variant for list endpoints: skip non-semver tags instead of throwing. */
-    fun toDomainOrNull(): Release? = runCatching { toDomain() }.getOrNull()
+    /** Tolerant variant for list endpoints: skip drafts and non-semver tags instead of throwing. */
+    fun toDomainOrNull(): Release? = if (draft) null else runCatching { toDomain() }.getOrNull()
 }
 
 @Serializable

@@ -35,4 +35,16 @@ class ReleaseParsingSpec : StringSpec({
         r.asset("silo.jar")?.downloadUrl shouldBe "https://example/silo.jar"
         r.asset("missing") shouldBe null
     }
+
+    "listFromJson skips draft releases and non-semver tags" {
+        val list =
+            """
+            [
+              {"tag_name":"v0.3.0","draft":true,"assets":[]},
+              {"tag_name":"nightly","draft":false,"assets":[]},
+              {"tag_name":"v0.2.0","draft":false,"assets":[]}
+            ]
+            """.trimIndent()
+        Release.listFromJson(list).map { it.tag } shouldBe listOf("v0.2.0")
+    }
 })
