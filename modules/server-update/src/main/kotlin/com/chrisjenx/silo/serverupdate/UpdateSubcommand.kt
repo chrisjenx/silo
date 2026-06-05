@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.chrisjenx.silo.server
+package com.chrisjenx.silo.serverupdate
 
+import com.chrisjenx.silo.server.SiloVersion
+import com.chrisjenx.silo.server.Subcommand
 import com.chrisjenx.silo.updater.AtomicJarReplacer
 import com.chrisjenx.silo.updater.GitHubReleaseClient
 import com.chrisjenx.silo.updater.SigstoreAttestationVerifier
@@ -22,7 +24,8 @@ import com.chrisjenx.silo.updater.UpdateOutcome
 import com.chrisjenx.silo.updater.UpdateRequest
 import com.chrisjenx.silo.updater.Updater
 
-object UpdateCommand {
+object UpdateSubcommand : Subcommand {
+    override val name: String = "update"
     private const val EXIT_OK = 0
     private const val EXIT_ERROR = 1
     private const val EXIT_UPDATE_AVAILABLE = 10
@@ -42,7 +45,7 @@ object UpdateCommand {
         """.trimIndent()
 
     /** Real entry from Main: reads SiloVersion + env, prompts on a TTY, runs the real Updater. */
-    fun run(args: List<String>): Int {
+    override fun run(args: List<String>): Int {
         if (args.contains("--help") || args.contains("-h")) {
             println(USAGE)
             return EXIT_OK

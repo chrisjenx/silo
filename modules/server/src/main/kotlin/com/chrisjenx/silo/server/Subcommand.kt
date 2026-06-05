@@ -13,19 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:JvmName("Main")
-
 package com.chrisjenx.silo.server
 
-import kotlin.system.exitProcess
+/** A CLI verb. Built-ins live in :server; optional ones (e.g. `update`) are wired per build. */
+interface Subcommand {
+    val name: String
 
-/**
- * Slim entry point (Docker / no self-update). Run with `./gradlew :server:run` or
- * `java -jar silo-<v>-slim.jar`. Handles built-in verbs (`--version`, `hash-password`)
- * via [runCli]; `update` prints a redirect (it's only bundled in the full jar). Otherwise
- * starts the server.
- */
-fun main(args: Array<String>) {
-    runCli(args, extra = emptyList())?.let { exitProcess(it) }
-    startServer()
+    fun run(args: List<String>): Int
 }

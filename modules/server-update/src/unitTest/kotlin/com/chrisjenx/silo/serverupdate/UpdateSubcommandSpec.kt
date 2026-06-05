@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.chrisjenx.silo.server
+package com.chrisjenx.silo.serverupdate
 
 import com.chrisjenx.silo.updater.SemVer
 import com.chrisjenx.silo.updater.UpdateOutcome
@@ -22,7 +22,7 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.nio.file.Path
 
-class UpdateCommandSpec : StringSpec({
+class UpdateSubcommandSpec : StringSpec({
 
     fun runWith(
         args: List<String>,
@@ -30,7 +30,7 @@ class UpdateCommandSpec : StringSpec({
     ): Pair<Int, UpdateRequest> {
         var captured: UpdateRequest? = null
         val code =
-            UpdateCommand.run(
+            UpdateSubcommand.run(
                 args = args,
                 currentVersion = "0.1.3",
                 repoDefault = "chrisjenx/silo",
@@ -42,6 +42,10 @@ class UpdateCommandSpec : StringSpec({
                 outcome
             }
         return code to (captured ?: error("request not captured"))
+    }
+
+    "name is 'update'" {
+        UpdateSubcommand.name shouldBe "update"
     }
 
     "--check available maps to exit code 10" {
