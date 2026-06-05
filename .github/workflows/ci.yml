@@ -42,6 +42,20 @@ jobs:
       - name: Build + test + lint + coverage
         run: ./gradlew --no-daemon --stacktrace build koverXmlReport ktlintCheck detekt spotlessCheck
 
+      - name: Verify the slim jar excludes the self-updater
+        run: |
+          ./gradlew --no-daemon :server:shadowJar :server-update:shadowJar -Psilo.commit="${GITHUB_SHA:0:7}"
+          slim=$(ls modules/server/build/libs/silo-*-slim.jar)
+          full=$(ls modules/server-update/build/libs/silo-*-all.jar)
+          echo "slim=$slim ($(du -h "$slim" | cut -f1))  full=$full ($(du -h "$full" | cut -f1))"
+          if unzip -l "$slim" | grep -qE 'com/chrisjenx/silo/updater/|dev/sigstore/|io/grpc/'; then
+            echo "::error::slim jar unexpectedly bundles the updater/sigstore"; exit 1
+          fi
+          if ! unzip -l "$full" | grep -q 'com/chrisjenx/silo/updater/'; then
+            echo "::error::full jar is missing the updater"; exit 1
+          fi
+          echo "Jar split verified: slim excludes the updater, full includes it."
+
       - name: Publish JUnit annotations
         if: always()
         uses: mikepenz/action-junit-report@v6
