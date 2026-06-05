@@ -69,6 +69,8 @@ curl -L https://github.com/chrisjenx/silo/releases/latest/download/silo.jar -o s
 java -jar silo.jar
 ```
 
+Upgrade in place with `java -jar silo.jar update` (verifies checksum + provenance before swapping).
+
 ### docker-compose
 
 See [`examples/docker-compose.yml`](examples/docker-compose.yml). Includes a named volume,

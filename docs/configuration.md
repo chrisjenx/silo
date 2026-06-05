@@ -176,6 +176,8 @@ A few things are deliberately not config keys:
 | `SILO_AUDIT_ENABLED` | `silo.audit.enabled` | `false` |
 | `SILO_AUDIT_DIR` | `silo.audit.dir` | `/data/audit` |
 | `SILO_LOG_SAMPLE_RATE` | logback turbo filter rate | `1` (log all) |
+| `SILO_UPDATE_REPO` | _(updater)_ `silo update` source repo | `chrisjenx/silo` |
+| `SILO_UPDATE_TOKEN` | _(updater)_ GitHub token for rate limits / private forks | _(unset)_ |
 
 ## Users file format
 
@@ -200,6 +202,8 @@ java -jar silo.jar hash-password
 # headless (CI/scripts): read a single line from stdin
 echo "$PASSWORD" | java -jar silo.jar hash-password
 ```
+
+The jar also ships a `silo update` verb for in-place upgrades; see the [operations runbook](operations.md#updating) for details.
 
 ## Persistence layout
 
