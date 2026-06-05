@@ -47,6 +47,7 @@ dependencies {
     implementation(project(":storage-fs"))
     implementation(project(":metadata-sqlite"))
     implementation(project(":metrics"))
+    implementation(project(":updater"))
 
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)
