@@ -50,6 +50,7 @@ Multi-module Gradle build (Kotlin DSL), package root `com.chrisjenx.silo`:
 :metadata-sqlite   - MetadataIndex impl over SQLite WAL
 :metrics           - Micrometer/Prometheus wiring
 :server            - Ktor app, routes, auth, config
+:server-update     - full-jar assembly: :server + the `update` Subcommand plugin (:updater)
 :web               - Kobweb SPA (separate composite project under web/)
 :bench             - kotlinx-benchmark/JMH
 :test-fixtures     - shared kotest helpers (TmpCacheRoot, TestKeys, FakeClock)
@@ -61,7 +62,7 @@ export is copied into `:server/src/main/resources/static/admin/` at assembly tim
 New module build files apply the `buildSrc` convention plugins: pure-Kotlin modules mirror
 `:protocol` (`silo.coverage-conventions` + `silo.testing-conventions`); `:server` uses
 `silo.ktor-conventions`. These wire jvm21, ktlint, detekt, spotless, the unitTest/integrationTest
-source sets, and (coverage-conventions only) the 80% Kover gate.
+source sets, and (coverage-conventions only) the 80% Kover gate. Two fat jars: `:server-update:shadowJar` is the **full** distributable (`silo-<v>-all.jar`, the release asset, includes `silo update`); `:server:shadowJar` is the **slim** jar (`silo-<v>-slim.jar`, shipped in the Docker image, no `:updater`/sigstore). `silo update` in the slim jar prints a redirect.
 
 ## Atomic write protocol (FS + SQLite)
 
@@ -146,7 +147,8 @@ Once `:server` and friends exist:
 ./gradlew :<module>:check                       # REAL per-module gate: detekt + ktlint + unitTest + integrationTest + kover (NOT `./gradlew test` — stock test task is empty)
 ./gradlew :<module>:unitTest --tests "*SomeSpec"  # single spec; specs live in src/{unitTest,integrationTest}/kotlin (filtering one spec may emit a spurious initializationError for siblings — trust the full run)
 ./gradlew :<module>:ktlintFormat                # auto-fix layout; spotlessApply ONLY stamps the license header, not ktlint
-./gradlew :server:shadowJar                     # fat jar -> modules/server/build/libs/silo-*-all.jar
+./gradlew :server-update:shadowJar             # FULL fat jar (release/standalone) -> modules/server-update/build/libs/silo-*-all.jar
+./gradlew :server:shadowJar                     # SLIM fat jar (Docker, no updater) -> modules/server/build/libs/silo-*-slim.jar
 ./gradlew ktlintCheck detekt                    # lint (or just :<module>:check)
 ./gradlew koverHtmlReport                       # coverage
 ./gradlew :bench:benchmark                      # JMH micro-benchmarks

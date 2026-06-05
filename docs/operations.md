@@ -62,7 +62,7 @@ replacing the on-disk jar. It never restarts the process — restart silo yourse
 
 **Docker / container installs** do not self-update; pull a new image tag instead
 (`docker pull ghcr.io/chrisjenx/silo:<version>`). The updater detects a non-writable jar and
-tells you so.
+tells you so. The Docker image ships the **slim** jar, which omits the self-updater entirely — running `silo update` there prints a redirect and exits non-zero. Standalone (`silo.jar`) downloads include it.
 
 Set `SILO_UPDATE_TOKEN` to a GitHub token if you hit API rate limits, and `SILO_UPDATE_REPO`
 to update from a fork.
