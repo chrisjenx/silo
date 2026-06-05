@@ -15,4 +15,34 @@
  */
 package com.chrisjenx.silo.updater
 
-data class SemVer(val major: Int, val minor: Int, val patch: Int, val preRelease: String? = null)
+data class SemVer(
+    val major: Int,
+    val minor: Int,
+    val patch: Int,
+    val preRelease: String? = null,
+) : Comparable<SemVer> {
+
+    override fun compareTo(other: SemVer): Int {
+        major.compareTo(other.major).let { if (it != 0) return it }
+        minor.compareTo(other.minor).let { if (it != 0) return it }
+        patch.compareTo(other.patch).let { if (it != 0) return it }
+        // Release (null pre-release) outranks any prerelease of the same x.y.z.
+        return when {
+            preRelease == null && other.preRelease == null -> 0
+            preRelease == null -> 1
+            other.preRelease == null -> -1
+            else -> preRelease.compareTo(other.preRelease)
+        }
+    }
+
+    companion object {
+        private val PATTERN = Regex("""^v?(\d+)\.(\d+)\.(\d+)(?:-(.+))?$""")
+
+        fun parse(raw: String): SemVer {
+            val m = PATTERN.matchEntire(raw.trim())
+                ?: throw IllegalArgumentException("Not a semantic version: '$raw'")
+            val (maj, min, pat, pre) = m.destructured
+            return SemVer(maj.toInt(), min.toInt(), pat.toInt(), pre.ifEmpty { null })
+        }
+    }
+}

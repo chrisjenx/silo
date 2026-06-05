@@ -16,10 +16,26 @@
 package com.chrisjenx.silo.updater
 
 import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.comparables.shouldBeGreaterThan
+import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.shouldBe
 
 class SemVerSpec : StringSpec({
-    "module builds and a trivial SemVer holds its parts" {
-        SemVer(0, 1, 3).major shouldBe 0
+    "parses plain and v-prefixed versions" {
+        SemVer.parse("v0.1.3") shouldBe SemVer(0, 1, 3)
+        SemVer.parse("0.2.0") shouldBe SemVer(0, 2, 0)
+    }
+    "parses a prerelease suffix" {
+        SemVer.parse("1.0.0-rc1") shouldBe SemVer(1, 0, 0, "rc1")
+    }
+    "orders by major, minor, patch" {
+        SemVer.parse("0.2.0") shouldBeGreaterThan SemVer.parse("0.1.9")
+        SemVer.parse("1.0.0") shouldBeGreaterThan SemVer.parse("0.9.9")
+    }
+    "a prerelease is lower than its release" {
+        SemVer.parse("1.0.0-rc1") shouldBeLessThan SemVer.parse("1.0.0")
+    }
+    "rejects garbage" {
+        runCatching { SemVer.parse("not-a-version") }.isFailure shouldBe true
     }
 })
