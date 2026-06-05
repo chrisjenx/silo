@@ -8,6 +8,7 @@ dependencies {
     implementation(libs.kotlin.stdlib)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.sigstore.java)
+    implementation(libs.slf4j.api)
 
     "unitTestImplementation"(libs.mockk)
 }
