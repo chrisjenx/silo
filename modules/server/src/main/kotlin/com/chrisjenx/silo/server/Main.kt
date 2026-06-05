@@ -28,6 +28,7 @@ import kotlin.system.exitProcess
  *
  * `--version` / `-V` prints `silo <version> (<sha>) jvm <javaVersion>` and exits.
  * `hash-password` reads a password (no echo) and prints its bcrypt hash.
+ * `update` checks GitHub Releases and self-replaces the jar after verifying it. See `silo update --help`.
  */
 fun main(args: Array<String>) {
     if (args.any { it == "--version" || it == "-V" }) {
@@ -36,6 +37,9 @@ fun main(args: Array<String>) {
     }
     if (args.firstOrNull() == "hash-password") {
         exitProcess(runHashPassword())
+    }
+    if (args.firstOrNull() == "update") {
+        exitProcess(UpdateCommand.run(args.drop(1)))
     }
     val config = SiloConfig.load(com.typesafe.config.ConfigFactory.load())
     embeddedServer(

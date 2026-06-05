@@ -27,9 +27,27 @@ object UpdateCommand {
     private const val EXIT_ERROR = 1
     private const val EXIT_UPDATE_AVAILABLE = 10
 
+    private val USAGE =
+        """
+        Usage: silo update [options]
+          (no options)              download + verify + install the latest release, then prompt to restart
+          --check                   report whether a newer version exists (exit 10 if so); no changes
+          --to <tag>                install a specific version, e.g. --to v0.2.0
+          --yes                     skip the confirmation prompt
+          --prerelease              consider prereleases
+          --no-verify-attestation   skip provenance check (SHA-256 still enforced)
+          --rollback                restore the previous jar from silo.jar.bak
+          --repo <owner/name>       update source (default: chrisjenx/silo; or SILO_UPDATE_REPO)
+        Env: SILO_UPDATE_TOKEN raises GitHub API rate limits / enables private forks.
+        """.trimIndent()
+
     /** Real entry from Main: reads SiloVersion + env, prompts on a TTY, runs the real Updater. */
-    fun run(args: List<String>): Int =
-        run(
+    fun run(args: List<String>): Int {
+        if (args.contains("--help") || args.contains("-h")) {
+            println(USAGE)
+            return EXIT_OK
+        }
+        return run(
             args = args,
             currentVersion = SiloVersion.version,
             repoDefault = "chrisjenx/silo",
@@ -37,6 +55,7 @@ object UpdateCommand {
             envToken = System.getenv("SILO_UPDATE_TOKEN"),
             confirm = ::promptYesNo,
         )
+    }
 
     /** Testable core. [execute] defaults to the real Updater built from parsed options. */
     @Suppress("LongParameterList")
