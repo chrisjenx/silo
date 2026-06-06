@@ -160,8 +160,8 @@ backends, compression, replication).
 ## Building from source
 
 ```bash
-./gradlew :server:shadowJar
-java -jar modules/server/build/libs/silo-*-all.jar
+./gradlew :server-update:shadowJar
+java -jar modules/server-update/build/libs/silo-*-all.jar
 ```
 
 ## Contributing

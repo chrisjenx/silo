@@ -160,7 +160,7 @@ jobs:
             ]
           }
           USERS
-          JAR="$(ls modules/server/build/libs/silo-*-all.jar | head -1)"
+          JAR="$(ls modules/server/build/libs/silo-*-slim.jar | head -1)"
           # Disable the free-space/inode reserve on the small /dev/shm tmpfs so
           # the default 5 GB / 100k reserve doesn't reject CI PUTs. Production
           # keeps the documented defaults.
@@ -222,7 +222,7 @@ jobs:
             ]
           }
           USERS
-          JAR="$(ls modules/server/build/libs/silo-*-all.jar | head -1)"
+          JAR="$(ls modules/server/build/libs/silo-*-slim.jar | head -1)"
           # Disable the free-space/inode reserve on the small /dev/shm tmpfs so
           # the default 5 GB / 100k reserve doesn't reject CI PUTs. Production
           # keeps the documented defaults.
