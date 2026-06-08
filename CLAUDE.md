@@ -50,6 +50,7 @@ Multi-module Gradle build (Kotlin DSL), package root `com.chrisjenx.silo`:
 :metadata-sqlite   - MetadataIndex impl over SQLite WAL
 :metrics           - Micrometer/Prometheus wiring
 :server            - Ktor app, routes, auth, config
+:server-update     - full-jar assembly: :server + the `update` Subcommand plugin (:updater)
 :web               - Kobweb SPA (separate composite project under web/)
 :bench             - kotlinx-benchmark/JMH
 :test-fixtures     - shared kotest helpers (TmpCacheRoot, TestKeys, FakeClock)
@@ -57,6 +58,11 @@ Multi-module Gradle build (Kotlin DSL), package root `com.chrisjenx.silo`:
 
 The `:server` module never depends on Kobweb; the SPA is built independently and the static
 export is copied into `:server/src/main/resources/static/admin/` at assembly time.
+
+New module build files apply the `buildSrc` convention plugins: pure-Kotlin modules mirror
+`:protocol` (`silo.coverage-conventions` + `silo.testing-conventions`); `:server` uses
+`silo.ktor-conventions`. These wire jvm21, ktlint, detekt, spotless, the unitTest/integrationTest
+source sets, and (coverage-conventions only) the 80% Kover gate. Two fat jars: `:server-update:shadowJar` is the **full** distributable (`silo-<v>-all.jar`, the release asset, includes `silo update`); `:server:shadowJar` is the **slim** jar (`silo-<v>-slim.jar`, shipped in the Docker image, no `:updater`/sigstore). `silo update` in the slim jar prints a redirect.
 
 ## Atomic write protocol (FS + SQLite)
 
@@ -138,11 +144,12 @@ Once `:server` and friends exist:
 
 ```bash
 ./gradlew :server:run                           # local dev server, hot reload
-./gradlew test                                  # unit + integration tests
-./gradlew test --tests "ClassName.methodName"   # single test
-./gradlew :protocol:test                        # tests for one module
-./gradlew :server:shadowJar                     # fat jar -> modules/server/build/libs/silo-*-all.jar
-./gradlew ktlintCheck detekt                    # lint
+./gradlew :<module>:check                       # REAL per-module gate: detekt + ktlint + unitTest + integrationTest + kover (NOT `./gradlew test` — stock test task is empty)
+./gradlew :<module>:unitTest --tests "*SomeSpec"  # single spec; specs live in src/{unitTest,integrationTest}/kotlin (filtering one spec may emit a spurious initializationError for siblings — trust the full run)
+./gradlew :<module>:ktlintFormat                # auto-fix layout; spotlessApply ONLY stamps the license header, not ktlint
+./gradlew :server-update:shadowJar             # FULL fat jar (release/standalone) -> modules/server-update/build/libs/silo-*-all.jar
+./gradlew :server:shadowJar                     # SLIM fat jar (Docker, no updater) -> modules/server/build/libs/silo-*-slim.jar
+./gradlew ktlintCheck detekt                    # lint (or just :<module>:check)
 ./gradlew koverHtmlReport                       # coverage
 ./gradlew :bench:benchmark                      # JMH micro-benchmarks
 ./gradlew :web:kobwebExport                     # build admin SPA bundle
@@ -176,6 +183,7 @@ docker buildx build --platform linux/amd64,linux/arm64 -t silo:dev .
 ## Anti-patterns (CI / detekt blocks these)
 
 - `!!` non-null assertion
+- detekt (beyond the bans here) also flags `DestructuringDeclarationWithTooManyEntries` (max 3), return-count/complexity, `LongParameterList`, and `TooGenericExceptionCaught` — refactor into helpers or add an inline `@Suppress("RuleName")` with a justifying comment
 - `runBlocking` outside `main` and tests
 - Logging request/response bodies
 - `Thread.sleep` in suspending functions

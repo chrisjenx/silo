@@ -15,17 +15,18 @@
  */
 @file:JvmName("Main")
 
-package com.chrisjenx.silo.server
+package com.chrisjenx.silo.serverupdate
 
+import com.chrisjenx.silo.server.runCli
+import com.chrisjenx.silo.server.startServer
 import kotlin.system.exitProcess
 
 /**
- * Slim entry point (Docker / no self-update). Run with `./gradlew :server:run` or
- * `java -jar silo-<v>-slim.jar`. Handles built-in verbs (`--version`, `hash-password`)
- * via [runCli]; `update` prints a redirect (it's only bundled in the full jar). Otherwise
- * starts the server.
+ * Full entry point (standalone download, with self-update). Run with
+ * `java -jar silo-<v>-all.jar`. Wires the `update` plugin explicitly, then delegates to the
+ * shared [runCli]/[startServer] in :server.
  */
 fun main(args: Array<String>) {
-    runCli(args, extra = emptyList())?.let { exitProcess(it) }
+    runCli(args, extra = listOf(UpdateSubcommand))?.let { exitProcess(it) }
     startServer()
 }

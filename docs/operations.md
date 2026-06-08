@@ -43,6 +43,30 @@ How to run, back up, monitor, and recover a Silo deployment.
    curl -fsS http://localhost:8080/cache/0123456789abcdef0123456789abcdef01234567
    ```
 
+## Updating
+
+**Fat-jar / CLI installs** have a built-in updater:
+
+```bash
+java -jar silo.jar update --check     # is a newer version available? (exit 10 = yes)
+java -jar silo.jar update             # download, verify, install, then restart silo
+java -jar silo.jar update --to v0.2.0 # pin a specific version
+java -jar silo.jar update --rollback  # restore the previous jar (silo.jar.bak)
+```
+
+The updater downloads the release jar, verifies its **SHA-256** against the release
+`checksums.txt` **and** its **GitHub build-provenance attestation** before atomically
+replacing the on-disk jar. It never restarts the process — restart silo yourself
+(`systemctl restart silo`, or re-run `java -jar silo.jar`). Take a backup before major upgrades
+(see [Backup](#backup)).
+
+**Docker / container installs** do not self-update; pull a new image tag instead
+(`docker pull ghcr.io/chrisjenx/silo:<version>`). The updater detects a non-writable jar and
+tells you so. The Docker image ships the **slim** jar, which omits the self-updater entirely — running `silo update` there prints a redirect and exits non-zero. Standalone (`silo.jar`) downloads include it.
+
+Set `SILO_UPDATE_TOKEN` to a GitHub token if you hit API rate limits, and `SILO_UPDATE_REPO`
+to update from a fork.
+
 ## Backup
 
 The data root is everything. `cas/` (blobs) and `silo.db*` (metadata) must be backed up **together** and consistently.

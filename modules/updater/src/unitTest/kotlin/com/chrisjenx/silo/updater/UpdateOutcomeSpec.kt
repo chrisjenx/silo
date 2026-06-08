@@ -13,19 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:JvmName("Main")
+package com.chrisjenx.silo.updater
 
-package com.chrisjenx.silo.server
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 
-import kotlin.system.exitProcess
-
-/**
- * Slim entry point (Docker / no self-update). Run with `./gradlew :server:run` or
- * `java -jar silo-<v>-slim.jar`. Handles built-in verbs (`--version`, `hash-password`)
- * via [runCli]; `update` prints a redirect (it's only bundled in the full jar). Otherwise
- * starts the server.
- */
-fun main(args: Array<String>) {
-    runCli(args, extra = emptyList())?.let { exitProcess(it) }
-    startServer()
-}
+class UpdateOutcomeSpec : StringSpec({
+    "outcome carries version transition" {
+        val o = UpdateOutcome.UpToDate(SemVer(0, 1, 3))
+        o.current shouldBe SemVer(0, 1, 3)
+    }
+})

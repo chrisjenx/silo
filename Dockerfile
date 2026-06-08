@@ -12,7 +12,7 @@ WORKDIR /src
 COPY . .
 RUN --mount=type=cache,target=/home/gradle/.gradle \
     ./gradlew --no-daemon :server:shadowJar -x test
-RUN cp modules/server/build/libs/silo-*-all.jar /tmp/silo.jar
+RUN cp modules/server/build/libs/silo-*-slim.jar /tmp/silo.jar
 
 # --- Stage 2: runtime ---
 FROM eclipse-temurin:21-jre-alpine AS runtime

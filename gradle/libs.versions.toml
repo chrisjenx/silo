@@ -21,6 +21,7 @@ detekt = "1.23.7"
 mockk = "1.13.13"
 kotlinx-benchmark = "0.4.13"
 cyclonedx = "2.3.1"
+sigstore-java = "1.3.0"
 
 [libraries]
 # Kotlin
@@ -64,6 +65,9 @@ typesafe-config = { module = "com.typesafe:config", version.ref = "typesafe-conf
 
 # Benchmark
 kotlinx-benchmark-runtime = { module = "org.jetbrains.kotlinx:kotlinx-benchmark-runtime", version.ref = "kotlinx-benchmark" }
+
+# Updater
+sigstore-java = { module = "dev.sigstore:sigstore-java", version.ref = "sigstore-java" }
 
 # Test
 kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }

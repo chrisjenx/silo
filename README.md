@@ -69,6 +69,24 @@ curl -L https://github.com/chrisjenx/silo/releases/latest/download/silo.jar -o s
 java -jar silo.jar
 ```
 
+Upgrade in place with `java -jar silo.jar update` (verifies checksum + provenance before swapping).
+
+#### Slim jar (no self-update)
+
+Each release also ships `silo-slim.jar` — identical server, but with the self-update
+machinery (and its dependencies) removed. Use it for locked-down or security-sensitive
+deployments where an in-process "download and replace my own binary" path is unwanted; it
+has a smaller dependency and CVE surface. It has no `update` subcommand — upgrade by
+downloading the new jar (or pulling a new Docker image, which always ships slim).
+
+```bash
+curl -L https://github.com/chrisjenx/silo/releases/latest/download/silo-slim.jar -o silo.jar
+java -jar silo.jar
+```
+
+Every release asset is listed in `checksums.txt` (SHA-256) and carries a GitHub build
+provenance attestation you can verify with `gh attestation verify silo-slim.jar -R chrisjenx/silo`.
+
 ### docker-compose
 
 See [`examples/docker-compose.yml`](examples/docker-compose.yml). Includes a named volume,
@@ -158,8 +176,8 @@ backends, compression, replication).
 ## Building from source
 
 ```bash
-./gradlew :server:shadowJar
-java -jar modules/server/build/libs/silo-*-all.jar
+./gradlew :server-update:shadowJar
+java -jar modules/server-update/build/libs/silo-*-all.jar
 ```
 
 ## Contributing
