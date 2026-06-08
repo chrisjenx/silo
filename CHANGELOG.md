@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/chrisjenx/silo/compare/v0.1.3...v0.2.0) (2026-06-08)
+
+
+### Features
+
+* built-in 'silo update' self-update command ([#144](https://github.com/chrisjenx/silo/issues/144)) ([#145](https://github.com/chrisjenx/silo/issues/145)) ([b87c561](https://github.com/chrisjenx/silo/commit/b87c5613d338b150bab48d1a05f668a0b9efd965))
+
 ## [0.1.3](https://github.com/chrisjenx/silo/compare/v0.1.2...v0.1.3) (2026-05-26)
 
 
