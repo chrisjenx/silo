@@ -29,23 +29,31 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Build fat jar
-        run: ./gradlew --no-daemon :server-update:shadowJar -Psilo.commit="${GITHUB_SHA:0:7}"
+      - name: Build full + slim jars
+        # full (:server-update) includes `silo update`; slim (:server) has no
+        # self-updater — shipped for locked-down/security-sensitive deploys.
+        run: ./gradlew --no-daemon :server-update:shadowJar :server:shadowJar -Psilo.commit="${GITHUB_SHA:0:7}"
 
-      - name: Generate SBOM (CycloneDX)
-        run: ./gradlew --no-daemon :server-update:cyclonedxBom
+      - name: Generate SBOMs (CycloneDX)
+        run: ./gradlew --no-daemon :server-update:cyclonedxBom :server:cyclonedxBom
 
-      - name: Compute checksums
+      - name: Stage artifacts + compute checksums
         run: |
           mkdir -p dist
+          # The full jar is the canonical `silo.jar` asset (the name `silo update`
+          # and the README quickstart depend on); the slim jar ships alongside it.
           cp modules/server-update/build/libs/silo-*-all.jar dist/silo.jar
+          cp modules/server/build/libs/silo-*-slim.jar dist/silo-slim.jar
           cp modules/server-update/build/reports/bom.json dist/silo-sbom.cdx.json
-          (cd dist && sha256sum silo.jar silo-sbom.cdx.json > checksums.txt)
+          cp modules/server/build/reports/bom.json dist/silo-slim-sbom.cdx.json
+          (cd dist && sha256sum silo.jar silo-slim.jar silo-sbom.cdx.json silo-slim-sbom.cdx.json > checksums.txt)
 
-      # Publish the CycloneDX SBOM to a Dependency-Track instance for
-      # continuous vulnerability tracking. No-ops unless DEPENDENCYTRACK_URL is
-      # configured as a repo/org secret, so forks and unconfigured repos skip it.
-      - name: Publish SBOM to Dependency-Track
+      # Publish both CycloneDX SBOMs to a Dependency-Track instance for
+      # continuous vulnerability tracking — the full jar as project `silo` and
+      # the slim jar as `silo-slim`, so its reduced dependency surface is tracked
+      # separately. No-ops unless DEPENDENCYTRACK_URL is configured as a repo/org
+      # secret, so forks and unconfigured repos skip it.
+      - name: Publish SBOMs to Dependency-Track
         env:
           DT_URL: ${{ secrets.DEPENDENCYTRACK_URL }}
           DT_API_KEY: ${{ secrets.DEPENDENCYTRACK_API_KEY }}
@@ -55,12 +63,15 @@ jobs:
             exit 0
           fi
           version="${GITHUB_REF_NAME#v}"
-          curl -fsS -X POST "${DT_URL%/}/api/v1/bom" \
-            -H "X-Api-Key: $DT_API_KEY" \
-            -F "autoCreate=true" \
-            -F "projectName=silo" \
-            -F "projectVersion=$version" \
-            -F "bom=@dist/silo-sbom.cdx.json"
+          for proj in "silo:dist/silo-sbom.cdx.json" "silo-slim:dist/silo-slim-sbom.cdx.json"; do
+            name="${proj%%:*}"; bom="${proj#*:}"
+            curl -fsS -X POST "${DT_URL%/}/api/v1/bom" \
+              -H "X-Api-Key: $DT_API_KEY" \
+              -F "autoCreate=true" \
+              -F "projectName=$name" \
+              -F "projectVersion=$version" \
+              -F "bom=@$bom"
+          done
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -120,17 +131,21 @@ jobs:
             cosign sign --yes "${tag}@${DIGEST}"
           done
 
-      - name: Attest provenance for the jar
+      - name: Attest provenance for the jars
         uses: actions/attest-build-provenance@v4
         with:
-          subject-path: dist/silo.jar
+          subject-path: |
+            dist/silo.jar
+            dist/silo-slim.jar
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/silo.jar
+            dist/silo-slim.jar
             dist/silo-sbom.cdx.json
+            dist/silo-slim-sbom.cdx.json
             dist/checksums.txt
           generate_release_notes: true
           draft: false

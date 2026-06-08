@@ -4,6 +4,9 @@ plugins {
     id("silo.ktor-conventions")
     id("silo.testing-conventions")
     alias(libs.plugins.shadow)
+    // SBOM for the slim jar: release.yml runs :server:cyclonedxBom to publish
+    // silo-slim-sbom.cdx.json, documenting the slim jar's reduced dependency set.
+    alias(libs.plugins.cyclonedx)
 }
 
 base {
