@@ -1,13 +1,13 @@
 name: Bench
 
+# k6 latency regression gate, comparing the PR against its merge base (main)
+# by building and benchmarking BOTH jars on the SAME runner, back-to-back.
+# This is immune to cross-run GitHub-runner variance, so there is no cached
+# baseline to drift or get stuck (the previous design froze on one lucky-fast
+# run and then failed every run, main and PRs alike).
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
-  schedule:
-    # Nightly at 03:00 UTC — refreshes the baseline on main.
-    - cron: "0 3 * * *"
   workflow_dispatch:
 
 permissions:
@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   k6:
-    name: k6 regression gate
+    name: k6 regression gate (PR vs main, same runner)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -38,9 +38,6 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Build fat jar
-        run: ./gradlew --no-daemon --stacktrace :server:shadowJar
-
       - name: Install k6
         run: |
           set -euo pipefail
@@ -50,86 +47,43 @@ jobs:
           sudo install "k6-${K6_VERSION}-linux-amd64/k6" /usr/local/bin/k6
           k6 version
 
-      # Baseline lives in the Actions cache (main is protected, so the workflow
-      # can't push a committed file to it). main/nightly runs save a new entry;
-      # PRs restore the latest via the restore-keys prefix.
-      - name: Restore baseline
-        uses: actions/cache/restore@v4
-        with:
-          path: bench/baselines/main.json
-          key: bench-baseline-main-${{ github.run_id }}
-          restore-keys: |
-            bench-baseline-main-
-
-      - name: Boot Silo
+      # Build the PR's server jar and — on a PR — the base (main) jar too, both
+      # on this same runner. Classifier-agnostic glob: works for silo-*-all.jar
+      # and (post #145) silo-*-slim.jar.
+      - name: Build current + base server jars
         run: |
           set -euo pipefail
-          DATA="$(mktemp -d -p /dev/shm)"
-          # Throwaway WRITE user so the mixed workload's PUTs are authorized.
-          cat > ci-users.conf <<'USERS'
-          silo {
-            users = [
-              {
-                username = "ci"
-                password-hash = "$2a$10$y3XGw7R720reVhD91l/yYuJbMcIBd4NsFhYPErAUy91jC3P14Si3W"
-                roles = ["read", "write"]
-              }
-            ]
-          }
-          USERS
-          JAR="$(ls modules/server/build/libs/silo-*-all.jar | head -1)"
-          # Disable the free-space/inode reserve: the bench runs on a small
-          # /dev/shm tmpfs and the default 5 GB / 100k reserve would reject the
-          # workload's PUTs. Production keeps the documented defaults.
-          SILO_PORT=8080 SILO_STORAGE_ROOT="$DATA" \
-            java -Dsilo.auth.users-file="$PWD/ci-users.conf" \
-              -Dsilo.storage.reserved-free-bytes=0 \
-              -Dsilo.storage.reserved-free-inodes=0 \
-              -jar "$JAR" &
-          echo $! > silo.pid
-          for _ in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1; then break; fi
-            sleep 1
-          done
-          curl -fsS http://127.0.0.1:8080/health
+          HEAD_SHA="$(git rev-parse HEAD)"
+          ./gradlew --no-daemon --stacktrace :server:shadowJar
+          cp "$(ls modules/server/build/libs/silo-*.jar | head -1)" /tmp/current.jar
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            echo "Building base (main) jar @ ${BASE_SHA:0:7}"
+            git checkout --quiet "$BASE_SHA"
+            ./gradlew --no-daemon --stacktrace :server:shadowJar
+            cp "$(ls modules/server/build/libs/silo-*.jar | head -1)" /tmp/base.jar
+            git checkout --quiet "$HEAD_SHA"
+          fi
 
-      - name: Run mixed workload
+      # Benchmark base then current, same runner, fresh /dev/shm root each time.
+      - name: Benchmark (base then current)
         env:
-          # PRs run a short workload to stay cheap; main/nightly run the full 5m.
-          DURATION: ${{ github.event_name == 'pull_request' && '1m' || '5m' }}
+          DURATION: 1m
         run: |
           set -euo pipefail
-          # Three runs against the already-booted Silo; the gate compares the
-          # per-percentile MEDIAN so one noisy run on a shared runner doesn't
-          # trip the 10% threshold.
-          for i in 1 2 3; do
-            k6 run --summary-export="run${i}.json" \
-              -e BASE_URL=http://127.0.0.1:8080 \
-              -e AUTH='ci:silo-ci-secret' \
-              -e DURATION="$DURATION" \
-              bench/k6/mixed.js
-          done
-          median() {
-            jq -s --arg k "$1" '[.[].metrics.http_req_duration[$k]] | sort | .[1]' run1.json run2.json run3.json
-          }
-          med="$(median med)"
-          p95="$(median 'p(95)')"
-          p99="$(median 'p(99)')"
-          printf '{"metrics":{"http_req_duration":{"med":%s,"p(95)":%s,"p(99)":%s}}}\n' \
-            "$med" "$p95" "$p99" > bench-results.json
-          echo "median-of-3 → med=$med p95=$p95 p99=$p99"
+          if [ -f /tmp/base.jar ]; then
+            bash bench/run-k6.sh /tmp/base.jar base-results.json "$DURATION"
+          fi
+          bash bench/run-k6.sh /tmp/current.jar current-results.json "$DURATION"
 
-      - name: Stop Silo
-        if: always()
-        run: kill "$(cat silo.pid)" 2>/dev/null || true
-
-      - name: Compare vs baseline
+      - name: Compare PR vs main
         id: gate
+        if: github.event_name == 'pull_request'
         continue-on-error: true
         run: |
           ./gradlew --no-daemon :bench:compareBaseline \
-            -Pcurrent=bench-results.json \
-            -Pbaseline=bench/baselines/main.json \
+            -Pcurrent=current-results.json \
+            -Pbaseline=base-results.json \
             -Pthreshold=0.10 \
             -Psummary=bench-summary.md
 
@@ -153,21 +107,8 @@ jobs:
               await github.rest.issues.createComment({ owner, repo, issue_number, body });
             }
 
-      - name: Refresh baseline (main only)
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.gate.outcome == 'success'
-        run: |
-          mkdir -p bench/baselines
-          cp bench-results.json bench/baselines/main.json
-
-      - name: Save baseline (main only)
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.gate.outcome == 'success'
-        uses: actions/cache/save@v4
-        with:
-          path: bench/baselines/main.json
-          key: bench-baseline-main-${{ github.run_id }}
-
       - name: Enforce regression gate
         if: steps.gate.outcome == 'failure'
         run: |
-          echo "::error::k6 latency regression exceeded the 10% threshold (see the PR comment)."
+          echo "::error::k6 latency regressed >10% vs main on the same runner (see the PR comment)."
           exit 1

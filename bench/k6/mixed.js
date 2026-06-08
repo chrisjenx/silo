@@ -10,10 +10,15 @@ http.setResponseCallback(http.expectedStatuses({ min: 200, max: 204 }, 404));
 const HOT_SIZE = 1000;
 // Bound the cold working set so the on-disk footprint is duration-independent.
 // 1 MiB payloads × this many distinct keys is the worst-case storage Silo
-// holds; the bench writes to a tmpfs (/dev/shm, ~8 GB on CI) and eviction is
-// not yet wired, so an unbounded cold space would fill the disk on the 5 m run
-// and Silo would (correctly) return 503 on ENOSPC — failing the gate for an
-// environmental reason, not a real regression. 5000 × 1 MiB ≈ 5 GB.
+// holds; the bench writes to a tmpfs (/dev/shm, ~8 GB on CI). Eviction IS wired,
+// but its sweeper runs on a ~60 s cadence and can't keep pace with this
+// high-rate write burst — and we don't want eviction I/O perturbing the latency
+// we're measuring — so the bench bounds the cold set rather than leaning on the
+// sweeper. An unbounded cold space would fill the tmpfs and Silo would
+// (correctly) return 503 on ENOSPC, failing the gate for an environmental
+// reason, not a real regression. 5000 × 1 MiB ≈ 5 GB, which fits one server's
+// fresh tmpfs (run-k6.sh reclaims each jar's data dir on exit so the base and
+// current runs never co-reside).
 const COLD_SIZE = 5000;
 const PAYLOAD = bytes(1024 * 1024).buffer; // 1 MiB
 
