@@ -39,8 +39,14 @@ SILO_PORT=8080 SILO_STORAGE_ROOT="$DATA" \
     -Dsilo.storage.reserved-free-inodes=0 \
     -jar "$JAR" &
 SILO_PID=$!
-# Always reap the server before returning so the next invocation can rebind 8080.
-trap 'kill "$SILO_PID" 2>/dev/null || true; wait "$SILO_PID" 2>/dev/null || true' EXIT
+# On exit, reap the server (so the next invocation can rebind 8080) AND delete
+# this run's /dev/shm data dir. The cleanup is load-bearing: bench.yml invokes
+# this script twice back-to-back (base jar, then current jar), and mixed.js's
+# cold working set is ~5 GB (COLD_SIZE × 1 MiB). Without the rm, base's ~5 GB
+# would still occupy the tmpfs while current writes another ~5 GB, blowing past
+# the ~8 GB /dev/shm and triggering ENOSPC → 503s → a false gate failure.
+# Reclaiming $DATA keeps the two runs from ever co-residing.
+trap 'kill "$SILO_PID" 2>/dev/null || true; wait "$SILO_PID" 2>/dev/null || true; rm -rf "$DATA"' EXIT
 
 # Wait for readiness (up to ~30s).
 for _ in $(seq 1 30); do
